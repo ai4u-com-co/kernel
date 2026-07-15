@@ -1,0 +1,30 @@
+{
+  "name": "@ai4u/config",
+  "version": "0.1.0",
+  "description": "Config compartida del ecosistema superAI: lee valores no-secretos (URLs, feature flags, dominios) desde la tabla system_settings de Mission Control, con fallback automático a process.env.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5",
+    "vitest": "^2"
+  }
+}
