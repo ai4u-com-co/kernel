@@ -5,12 +5,15 @@ Etapa 2 de la migración a monorepo del ecosistema superAI: los paquetes compart
 un repo con historia preservada, para que cambiar el vocabulario compartido entre ellos
 sea un commit, no una coordinación manual entre 4 repos.
 
-**Estado (jul-26-2026): `config` y `platform` migrados.** `config` con el ciclo
-end-to-end probado en producción real (tag → espejo → bump-bot → PR → merge → deploy).
-`platform` (27 consumidores, el de mayor blast radius de los 4) con historia importada
-y build/type-check/test verificados en verde, `dist/` byte a byte idéntico al publicado
-— **sin publicar ningún tag nuevo todavía**, a propósito (ver nota abajo). `mc-sso` y
-`sistemaDiseno` siguen sin tocar.
+**Estado (jul-26-2026): `config`, `platform` y `mc-sso` migrados.** `config` con el
+ciclo end-to-end probado en producción real (tag → espejo → bump-bot → PR → merge →
+deploy). `platform` (27 consumidores) y `mc-sso` (21 consumidores) con historia
+importada y build/type-check/test verificados en verde, `dist/` byte a byte idéntico
+al publicado — **sin publicar tags nuevos todavía**, a propósito (ver nota abajo).
+`sistemaDiseno` sigue sin tocar.
+
+Confirmado también: el pin interno `platform → mc-sso` (`github:ai4u-com-co/mc-sso#v1.1.0`,
+corregido en julio tras el bug del pin flotando) llegó correcto en la copia importada.
 
 ## Por qué existe (y qué NO cambia para los 27+ consumidores)
 
@@ -27,6 +30,7 @@ workflow compila ese paquete y publica su contenido como un commit + tag en
 packages/
   config/     — @ai4u/config, historia importada de ai4u-com-co/config vía git subtree
   platform/   — @ai4u/platform, historia importada de ai4u-com-co/platform vía git subtree
+  mc-sso/     — @ai4u/mc-sso, historia importada de ai4u-com-co/mc-sso (rama master) vía git subtree
 ```
 
 ## Espejo — estado real
@@ -57,19 +61,20 @@ O vía UI: `https://github.com/ai4u-com-co/kernel/settings/secrets/actions/new`.
 Sin esos secrets, el workflow falla explícito (no en silencio) en el step
 "Verificar credencial".
 
-## Nota sobre `platform`: por qué no se taggeó todavía
+## Nota sobre `platform` y `mc-sso`: por qué no se taggearon todavía
 
 A diferencia de `config` (2 consumidores, bump trivial de bajo costo para probar el
-mecanismo completo), `platform` tiene **27 consumidores reales en producción**. El
-mecanismo de espejo ya está probado end-to-end con `config` — repetir esa prueba acá
-forzando un bump artificial dispararía `bump-bot` sobre los 27 a la vez, generando PRs
-reales en toda la org solo para "probar algo" que ya se probó. No se justifica.
+mecanismo completo), `platform` (27 consumidores) y `mc-sso` (21) tienen mucho más
+blast radius. El mecanismo de espejo ya está probado end-to-end con `config` —
+repetir esa prueba acá forzando un bump artificial dispararía `bump-bot` sobre
+decenas de consumidores reales a la vez, solo para "probar algo" que ya se probó.
+No se justifica.
 
-El primer tag real de `platform` desde acá se hace cuando haya un cambio real que
+El primer tag real de cada uno desde `kernel` se hace cuando haya un cambio real que
 publicar (un fix, una feature) — no antes.
 
 ## Siguiente paso (no hecho todavía)
 
-Repetir el mismo patrón de import + verificación de fidelidad con `mc-sso` (21
-consumidores) y `sistemaDiseno` (25, ~21MB de historia — decidir antes si se trae
-completa o se trunca).
+Repetir el mismo patrón de import + verificación de fidelidad con `sistemaDiseno`
+(25 consumidores, ~21MB de historia — decidir antes si se trae completa o se trunca,
+son assets de marca, no solo código).
