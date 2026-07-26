@@ -1,0 +1,11 @@
+import { Meta, StoryObj } from '@storybook/react-vite';
+import { default as StatusDot } from './StatusDot';
+declare const meta: Meta<typeof StatusDot>;
+export default meta;
+type Story = StoryObj<typeof StatusDot>;
+export declare const Online: Story;
+export declare const Offline: Story;
+export declare const Starting: Story;
+export declare const Checking: Story;
+export declare const Idle: Story;
+export declare const AllStates: Story;

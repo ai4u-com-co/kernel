@@ -1,0 +1,152 @@
+import React from 'react';
+import { Box, Stack } from '@mui/material';
+import { SmallText, ContextualLink, NavigationDot } from '../atoms';
+import { useColors } from '../../hooks';
+
+interface RelatedPageItem {
+  href: string;
+  label: string;
+  context?: string;
+  trackingLabel?: string;
+}
+
+interface RelatedPagesProps {
+  pages: RelatedPageItem[];
+  title?: string;
+  variant?: 'horizontal' | 'vertical';
+  className?: string;
+}
+
+/**
+ * RelatedPages - Widget sutil de páginas relacionadas
+ * 
+ * Máximo 3 enlaces con contexto semántico claro
+ * Diseño hipermegaminimalista con spacing generoso
+ * Optimizado para SEO y distribución de link juice
+ * 
+ * @example
+ * <RelatedPages 
+ *   title="También podrías estar interesado en:"
+ *   pages={[
+ *     { to: '/servicios', label: 'Nuestros servicios', context: 'Conoce qué ofrecemos' },
+ *     { to: '/casos-de-uso', label: 'Casos reales', context: 'Ve resultados comprobables' }
+ *   ]}
+ * />
+ */
+const RelatedPages: React.FC<RelatedPagesProps> = (props) => {
+  const {
+    pages,
+    title,
+    variant = 'vertical',
+    className,
+  } = props;
+  const colors = useColors();
+  const defaultTitle = 'También podrías estar interesado en:';
+  
+  // Limitar a máximo 3 enlaces para mantener minimalismo
+  const limitedPages = pages.slice(0, 3);
+
+  if (limitedPages.length === 0) return null;
+
+  const renderPages = () => {
+    if (variant === 'horizontal') {
+      return (
+        <Stack
+          direction="row"
+          spacing={3}
+          sx={{ gap: 2, alignItems: 'center', flexWrap: 'wrap' }}
+        >
+          {limitedPages.map((page, index) => (
+            <Box key={page.href} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box>
+                <ContextualLink
+                  href={page.href}
+                  variant="subtle"
+                  ariaLabel={page.context || page.label}
+                >
+                  <SmallText sx={{ fontWeight: 400, fontSize: '0.875rem' }}>
+                    {page.label}
+                  </SmallText>
+                </ContextualLink>
+                {page.context && (
+                  <SmallText 
+                    sx={{ 
+                      color: colors.contrast.text.secondary, 
+                      fontSize: '0.75rem',
+                      mt: 0.5,
+                      display: 'block'
+                    }}
+                  >
+                    {page.context}
+                  </SmallText>
+                )}
+              </Box>
+              {index < limitedPages.length - 1 && (
+                <NavigationDot variant="separator" size="small" />
+              )}
+            </Box>
+          ))}
+        </Stack>
+      );
+    }
+
+    return (
+      <Stack spacing={3}>
+        {limitedPages.map((page) => (
+          <Box key={page.href}>
+            <ContextualLink
+              href={page.href}
+              variant="subtle"
+              ariaLabel={page.context || page.label}
+            >
+              <SmallText sx={{ fontWeight: 400, fontSize: '0.875rem' }}>
+                {page.label}
+              </SmallText>
+            </ContextualLink>
+            {page.context && (
+              <SmallText 
+                sx={{ 
+                  color: colors.contrast.text.secondary, 
+                  fontSize: '0.75rem',
+                  mt: 0.5,
+                  display: 'block'
+                }}
+              >
+                {page.context}
+              </SmallText>
+            )}
+          </Box>
+        ))}
+      </Stack>
+    );
+  };
+
+  return (
+    <Box 
+      className={className}
+      sx={{ 
+        py: 4,
+        borderTop: `1px solid ${colors.contrast.divider}`,
+        borderBottom: `1px solid ${colors.contrast.divider}`,
+        backgroundColor: colors.contrast.surface,
+      }}
+    >
+      <SmallText 
+        sx={{ 
+          color: colors.contrast.text.secondary,
+          fontWeight: 400,
+          mb: 3,
+          fontSize: '0.8rem',
+          textTransform: 'none',
+          letterSpacing: '0.5px'
+        }}
+      >
+        {title || defaultTitle}
+      </SmallText>
+      
+      {renderPages()}
+    </Box>
+  );
+};
+
+export default RelatedPages;

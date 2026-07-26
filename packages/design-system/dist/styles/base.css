@@ -1,0 +1,167 @@
+/* AI4U Design System — Base Styles */
+/* Tokens CSS + @font-face. Espejo de tokens/index.ts y del Brand Book 2025 (pg 05–06). */
+/* NOTA: los estilos base de elementos usan :where() (especificidad 0) para que cualquier */
+/* app o MUI los pueda sobrescribir sin !important. Todo aquí es aditivo y opt-in. */
+
+@font-face {
+  font-family: 'Necto Mono';
+  src: url('/fonts/NectoMono-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ─── Colores de marca (canónicos — Brand Book pg 05) ─── */
+  --ai4u-mint-cream:    #eaf4eb;  /* base — claridad y minimalismo */
+  --ai4u-erie-black:    #171717;  /* contraste elegante, texto/superficies oscuras */
+  --ai4u-hot-orange:    #ff6e00;  /* energía, CTAs, danger/error */
+  --ai4u-moderate-blue: #3daed1;  /* futuro y tecnología, info/success */
+  --ai4u-cadet-gray:    #94989b;  /* balance, texto secundario, bordes */
+  --ai4u-white:         #ffffff;
+
+  /* Aliases legacy (backward compat — NO eliminar) */
+  --ai4u-black: #171717;          /* = erie black */
+  --ai4u-orange: #ff6e00;         /* = hot orange */
+  --ai4u-mint: #eaf4eb;           /* = mint cream */
+  --ai4u-blue: #3daed1;           /* = moderate blue */
+
+  /* Escala de grises */
+  --ai4u-gray-50: #FAFAFA;
+  --ai4u-gray-100: #F5F5F5;
+  --ai4u-gray-200: #E5E5E5;
+  --ai4u-gray-300: #D4D4D4;
+  --ai4u-gray-400: #A3A3A3;
+  --ai4u-gray-500: #737373;
+  --ai4u-gray-600: #525252;
+  --ai4u-gray-700: #404040;
+  --ai4u-gray-800: #262626;
+  --ai4u-gray-900: #171717;
+
+  /* ─── Tints derivados (usados en producto: bordes, fondos de error/info) ─── */
+  --ai4u-mint-cream-60:   rgba(234, 244, 235, 0.60);
+  --ai4u-erie-black-8:    rgba(23, 23, 23, 0.08);
+  --ai4u-erie-black-10:   rgba(23, 23, 23, 0.10);
+  --ai4u-erie-black-20:   rgba(23, 23, 23, 0.20);
+  --ai4u-erie-black-30:   rgba(23, 23, 23, 0.30);
+  --ai4u-hot-orange-5:    rgba(255, 110, 0, 0.05);
+  --ai4u-hot-orange-8:    rgba(255, 110, 0, 0.08);
+  --ai4u-hot-orange-30:   rgba(255, 110, 0, 0.30);
+  --ai4u-moderate-blue-4:  rgba(61, 174, 209, 0.04);
+  --ai4u-moderate-blue-8:  rgba(61, 174, 209, 0.08);
+  --ai4u-moderate-blue-15: rgba(61, 174, 209, 0.15);
+
+  /* ─── Estados funcionales — inversión semántica AI4U: blue=success, orange=error ─── */
+  --ai4u-success: #3DAED1;  /* moderateBlue — NO usar verde */
+  --ai4u-error:   #FF6E00;  /* hotOrange — NO usar rojo */
+  --ai4u-warning: #FF6E00;  /* hotOrange */
+  --ai4u-info:    #3DAED1;  /* moderateBlue */
+
+  /* Semánticos de superficie/texto */
+  --ai4u-fg-1: var(--ai4u-erie-black);
+  --ai4u-fg-2: var(--ai4u-cadet-gray);
+  --ai4u-fg-inverse: var(--ai4u-white);
+  --ai4u-bg-1: var(--ai4u-mint-cream);
+  --ai4u-bg-2: var(--ai4u-white);
+  --ai4u-bg-inverse: var(--ai4u-erie-black);
+  --ai4u-border-1: var(--ai4u-erie-black-10);
+  --ai4u-border-2: var(--ai4u-erie-black-20);
+  --ai4u-accent: var(--ai4u-hot-orange);
+
+  /* ─── Tipografía ─── */
+  --ai4u-font-sans: "Red Hat Display", system-ui, -apple-system, sans-serif;
+  --ai4u-font-mono: "Necto Mono", "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
+  /* Brand spec: interletra 20 ≈ 0.05em para cuerpo y UI */
+  --ai4u-tracking-brand: 0.05em;
+  --ai4u-tracking-tight: -0.01em;
+  --ai4u-tracking-caption: 0.06em;
+
+  /* Escala tipográfica */
+  --ai4u-fs-display: clamp(2.5rem, 6vw, 4.5rem);
+  --ai4u-fs-h1:      clamp(2rem, 4vw, 3rem);
+  --ai4u-fs-h2:      clamp(1.5rem, 3vw, 2rem);
+  --ai4u-fs-h3:      1.25rem;
+  --ai4u-fs-body:    1rem;
+  --ai4u-fs-sm:      0.875rem;
+  --ai4u-fs-xs:      0.75rem;
+
+  /* Pesos */
+  --ai4u-fw-light: 300;
+  --ai4u-fw-regular: 400;
+  --ai4u-fw-medium: 500;
+  --ai4u-fw-semibold: 600;
+  --ai4u-fw-bold: 700;
+  --ai4u-fw-extrabold: 800;
+  --ai4u-fw-black: 900;
+
+  /* ─── Radii ─── */
+  --ai4u-radius-sm:   0.5rem;   /* 8px — UI pequeña, error boxes */
+  --ai4u-radius-card: 1rem;     /* 16px — cards, inputs (workhorse) */
+  --ai4u-radius-pill: 9999px;   /* pills, badges, chips */
+
+  /* ─── Spacing (base 4pt) ─── */
+  --ai4u-space-xs:  0.25rem;
+  --ai4u-space-sm:  0.5rem;
+  --ai4u-space-md:  1rem;
+  --ai4u-space-lg:  1.5rem;
+  --ai4u-space-xl:  2rem;
+  --ai4u-space-2xl: 3rem;
+  --ai4u-space-3xl: 4rem;
+
+  /* ─── Shadows (sutiles, sin glow de color) ─── */
+  --ai4u-shadow-sm: 0 1px 2px rgba(23, 23, 23, 0.05);
+  --ai4u-shadow-md: 0 4px 12px rgba(23, 23, 23, 0.08);
+  --ai4u-shadow-lg: 0 8px 24px rgba(23, 23, 23, 0.10);
+  --ai4u-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.12);
+}
+
+:root {
+  --ai4u-bg-default: #eaf4eb;
+  --ai4u-bg-surface: #eaf4eb;
+  --ai4u-text-primary: #171717;
+  --ai4u-text-secondary: #525252;
+  --ai4u-border-color: #E5E5E5;
+}
+
+[data-theme="dark"] {
+  --ai4u-bg-default: #171717;
+  --ai4u-bg-surface: #262626;
+  --ai4u-text-primary: #FFFFFF;
+  --ai4u-text-secondary: #D4D4D4;
+  --ai4u-border-color: #404040;
+
+  --ai4u-fg-1: var(--ai4u-white);
+  --ai4u-fg-2: var(--ai4u-cadet-gray);
+  --ai4u-bg-1: var(--ai4u-erie-black);
+  --ai4u-bg-2: var(--ai4u-gray-800);
+  --ai4u-border-1: rgba(255, 255, 255, 0.12);
+}
+
+/* ─── Estilos base de elementos — especificidad 0 (:where), 100% sobrescribibles ─── */
+:where(body) {
+  font-family: var(--ai4u-font-sans);
+  letter-spacing: var(--ai4u-tracking-brand);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:where(h1) { font-weight: var(--ai4u-fw-bold); font-size: var(--ai4u-fs-h1); line-height: 1.1; letter-spacing: 0.02em; }
+:where(h2) { font-weight: var(--ai4u-fw-semibold); font-size: var(--ai4u-fs-h2); line-height: 1.2; letter-spacing: 0.03em; }
+:where(h3) { font-weight: var(--ai4u-fw-semibold); font-size: var(--ai4u-fs-h3); line-height: 1.3; letter-spacing: 0.04em; }
+:where(code, kbd, samp, pre, time) { font-family: var(--ai4u-font-mono); letter-spacing: 0; }
+
+/* ─── Clases utilitarias opt-in (por className, sin riesgo) ─── */
+.ai4u-display {
+  font-weight: var(--ai4u-fw-black);
+  font-size: var(--ai4u-fs-display);
+  line-height: 1.05;
+  letter-spacing: var(--ai4u-tracking-tight);
+}
+.ai4u-caption {
+  font-size: var(--ai4u-fs-xs);
+  color: var(--ai4u-fg-2);
+  letter-spacing: var(--ai4u-tracking-caption);
+  text-transform: uppercase;
+  font-weight: var(--ai4u-fw-semibold);
+}
+.ai4u-mono { font-family: var(--ai4u-font-mono); letter-spacing: 0; }

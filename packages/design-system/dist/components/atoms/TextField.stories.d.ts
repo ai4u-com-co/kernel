@@ -1,0 +1,10 @@
+import { Meta, StoryObj } from '@storybook/react-vite';
+import { default as TextField } from './TextField';
+declare const meta: Meta<typeof TextField>;
+export default meta;
+type Story = StoryObj<typeof TextField>;
+export declare const Default: Story;
+export declare const Small: Story;
+export declare const Large: Story;
+export declare const Error: Story;
+export declare const Disabled: Story;

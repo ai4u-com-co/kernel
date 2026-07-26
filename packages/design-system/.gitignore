@@ -1,0 +1,9 @@
+node_modules/
+.claude/
+*.tmp.*
+.DS_Store
+.env
+.env.local
+
+*storybook.log
+storybook-static
