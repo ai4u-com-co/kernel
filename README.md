@@ -5,11 +5,15 @@ Etapa 2 de la migración a monorepo del ecosistema superAI: los paquetes compart
 un repo con historia preservada, para que cambiar el vocabulario compartido entre ellos
 sea un commit, no una coordinación manual entre 4 repos.
 
-**Estado (jul-26-2026): los 4 paquetes migrados.** `config` con el ciclo end-to-end
-probado en producción real (tag → espejo → bump-bot → PR → merge → deploy). `platform`
-(27 consumidores), `mc-sso` (21) y `design-system`/`sistemaDiseno` (25) con historia
-importada, build/type-check en verde — **sin publicar tags nuevos todavía**, a propósito
-(ver nota abajo).
+**Estado (jul-26-2026): los 5 paquetes migrados** (los 4 originales + `contracts`,
+creado el mismo día como quinto paquete compartido y plegado acá para consistencia).
+`config` con el ciclo end-to-end probado en producción real (tag → espejo → bump-bot →
+PR → merge → deploy). `platform` (27 consumidores), `mc-sso` (21) y
+`design-system`/`sistemaDiseno` (25) con historia importada, build/type-check en verde
+— **sin publicar tags nuevos todavía**, a propósito (ver nota abajo). `contracts` ya
+tenía su tag original `v0.1.0` (de antes de existir `kernel`) y un único consumidor real
+(`sap-b1-chat`) — bajo riesgo si algún día se fuerza un ciclo de prueba ahí, pero no
+hace falta: nada cambió de su contenido.
 
 Confirmado también: el pin interno `platform → mc-sso` (`github:ai4u-com-co/mc-sso#v1.1.0`,
 corregido en julio tras el bug del pin flotando) llegó correcto en la copia importada.
@@ -36,6 +40,7 @@ packages/
   platform/       — @ai4u/platform, historia importada de ai4u-com-co/platform vía git subtree
   mc-sso/         — @ai4u/mc-sso, historia importada de ai4u-com-co/mc-sso (rama master) vía git subtree
   design-system/  — @ai4u/design-system, historia importada de ai4u-com-co/sistemaDiseno (rama master) vía git subtree
+  contracts/      — @ai4u/contracts, historia importada de ai4u-com-co/contracts vía git subtree
 ```
 
 **Nota de nombres — no tocado a propósito**: el script de type-check de `design-system`
@@ -103,9 +108,10 @@ publicar (un fix, una feature) — no antes.
 | `platform` | `tsc` | Byte a byte idéntico |
 | `mc-sso` | `tsc` | Byte a byte idéntico |
 | `design-system` | Vite/Rollup | **No** idéntico — confirmado no-determinismo del minificador (dos builds seguidos en el mismo lugar SÍ son idénticos entre sí; la diferencia es contra el publicado en otro entorno de build). Nombres de variables minificadas distintos, mismo código fuente (mismo commit vía subtree), typecheck limpio. |
+| `contracts` | `tsc` | Byte a byte idéntico |
 
-Los 4: historia completa preservada vía `git subtree` (`config`/`platform` desde
-`main`, `mc-sso`/`sistemaDiseno` desde `master`), CI real de `kernel` en verde.
+Los 5: historia completa preservada vía `git subtree` (`config`/`platform`/`contracts`
+desde `main`, `mc-sso`/`sistemaDiseno` desde `master`), CI real de `kernel` en verde.
 
 ## Siguiente paso (no hecho todavía)
 

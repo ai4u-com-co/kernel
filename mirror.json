@@ -2,5 +2,6 @@
   "config": "ai4u-com-co/config",
   "platform": "ai4u-com-co/platform",
   "mc-sso": "ai4u-com-co/mc-sso",
-  "design-system": "ai4u-com-co/sistemaDiseno"
+  "design-system": "ai4u-com-co/sistemaDiseno",
+  "contracts": "ai4u-com-co/contracts"
 }
