@@ -1,6 +1,6 @@
 {
   "name": "@ai4u/design-system",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "AI4U Design System — tokens, components, and themes",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -22,14 +22,15 @@
       "require": "./dist/changelog/index.cjs",
       "types": "./dist/changelog/index.d.ts"
     },
-    "./styles": "./dist/styles/base.css"
+    "./styles": "./dist/styles/base.css",
+    "./styles/tailwind-theme.css": "./dist/styles/tailwind-theme.css"
   },
   "files": [
     "dist",
     "src"
   ],
   "scripts": {
-    "build": "vite build && mkdir -p dist/styles && cp src/styles/base.css dist/styles/base.css",
+    "build": "vite build && mkdir -p dist/styles && cp src/styles/*.css dist/styles/",
     "dev": "vite build --watch",
     "preview": "vite",
     "typecheck": "tsc --noEmit",

@@ -69,13 +69,33 @@ export const TRANSITION_TOKENS = {
   },
 } as const;
 
-// Breakpoints
+// ─── Breakpoints ─────────────────────────────────────────────────────────────
+// FUENTE ÚNICA DE VERDAD del ecosistema. Valores alineados con los defaults de
+// Tailwind porque 14 de las ~18 apps del ecosistema son Tailwind; el design
+// system (MUI) se adapta a ellas, no al revés.
+//
+// Para que MUI quiebre en los mismos puntos, pasar `MUI_BREAKPOINTS` a
+// createTheme (ver abajo). Para que una app Tailwind quede anclada
+// explícitamente a estos valores, importar `styles/tailwind-theme.css`.
 export const BREAKPOINT_TOKENS = {
-  xs: 0,
-  sm: 600,
-  md: 960,
-  lg: 1280,
-  xl: 1920,
+  xs: 0,      // móvil (base — mobile first)
+  sm: 640,    // móvil grande
+  md: 768,    // tablet
+  lg: 1024,   // laptop
+  xl: 1280,   // escritorio
+  '2xl': 1536, // escritorio ancho
+} as const;
+
+/**
+ * Fragmento listo para `createTheme({ breakpoints: MUI_BREAKPOINTS })`.
+ *
+ * Es **opt-in**: sin esto, MUI usa sus propios defaults (600/900/1200/1536),
+ * que no coinciden con Tailwind. Adoptarlo alinea una app MUI con el resto del
+ * ecosistema, pero mueve los puntos de quiebre existentes — revisar visualmente
+ * antes de subirlo a producción.
+ */
+export const MUI_BREAKPOINTS = {
+  values: BREAKPOINT_TOKENS,
 } as const;
 
 // Tema completo de tokens

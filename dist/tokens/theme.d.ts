@@ -55,10 +55,29 @@ export declare const TRANSITION_TOKENS: {
 };
 export declare const BREAKPOINT_TOKENS: {
     readonly xs: 0;
-    readonly sm: 600;
-    readonly md: 960;
-    readonly lg: 1280;
-    readonly xl: 1920;
+    readonly sm: 640;
+    readonly md: 768;
+    readonly lg: 1024;
+    readonly xl: 1280;
+    readonly '2xl': 1536;
+};
+/**
+ * Fragmento listo para `createTheme({ breakpoints: MUI_BREAKPOINTS })`.
+ *
+ * Es **opt-in**: sin esto, MUI usa sus propios defaults (600/900/1200/1536),
+ * que no coinciden con Tailwind. Adoptarlo alinea una app MUI con el resto del
+ * ecosistema, pero mueve los puntos de quiebre existentes — revisar visualmente
+ * antes de subirlo a producción.
+ */
+export declare const MUI_BREAKPOINTS: {
+    readonly values: {
+        readonly xs: 0;
+        readonly sm: 640;
+        readonly md: 768;
+        readonly lg: 1024;
+        readonly xl: 1280;
+        readonly '2xl': 1536;
+    };
 };
 export declare const AI4U_DESIGN_TOKENS: {
     readonly palette: {
@@ -444,10 +463,11 @@ export declare const AI4U_DESIGN_TOKENS: {
     };
     readonly breakpoints: {
         readonly xs: 0;
-        readonly sm: 600;
-        readonly md: 960;
-        readonly lg: 1280;
-        readonly xl: 1920;
+        readonly sm: 640;
+        readonly md: 768;
+        readonly lg: 1024;
+        readonly xl: 1280;
+        readonly '2xl': 1536;
     };
 };
 export declare const createAI4UTokens: (mode: "light" | "dark") => {
@@ -866,10 +886,11 @@ export declare const createAI4UTokens: (mode: "light" | "dark") => {
     };
     breakpoints: {
         readonly xs: 0;
-        readonly sm: 600;
-        readonly md: 960;
-        readonly lg: 1280;
-        readonly xl: 1920;
+        readonly sm: 640;
+        readonly md: 768;
+        readonly lg: 1024;
+        readonly xl: 1280;
+        readonly '2xl': 1536;
     };
 };
 export default AI4U_DESIGN_TOKENS;

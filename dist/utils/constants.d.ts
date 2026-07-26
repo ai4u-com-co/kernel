@@ -46,7 +46,7 @@ export declare const BRAND_COLORS: {
     readonly INFO: "#3DAED1";
 };
 export declare const BREAKPOINTS: {
-    readonly MOBILE: 600;
-    readonly TABLET: 960;
-    readonly DESKTOP: 1280;
+    readonly MOBILE: 640;
+    readonly TABLET: 768;
+    readonly DESKTOP: 1024;
 };

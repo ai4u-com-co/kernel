@@ -1,5 +1,5 @@
 import { a as t, A as r } from "../palette-Cg2N1Fyc.js";
-import { C as h, S as u, u as y, b as T } from "../palette-Cg2N1Fyc.js";
+import { C as u, S as y, u as T, b as N } from "../palette-Cg2N1Fyc.js";
 const n = {
   // Familias de fuentes
   fontFamily: {
@@ -56,7 +56,7 @@ const n = {
     wider: "0.1em",
     widest: "0.2em"
   }
-}, i = {
+}, a = {
   // Títulos "DECONSTRUCTED"
   display: {
     giant: {
@@ -158,7 +158,7 @@ const n = {
     body: "font-normal leading-relaxed",
     label: "font-mono text-sm leading-normal tracking-widest"
   }
-}, a = {
+}, o = {
   // Espaciado base (8px)
   base: 8,
   // Escala de espaciado (más generosa)
@@ -291,7 +291,7 @@ const n = {
       // 96px en desktop grande
     }
   }
-}, o = {
+}, m = {
   none: "0 0 #0000",
   sm: "0 1px 2px rgba(23, 23, 23, 0.05)",
   default: "0 4px 12px rgba(23, 23, 23, 0.08)",
@@ -309,7 +309,7 @@ const n = {
     glow: "none"
     // Sin glow — Brand Book §sombras
   }
-}, m = {
+}, l = {
   width: {
     none: "0",
     thin: "1px",
@@ -326,7 +326,7 @@ const n = {
     full: "9999px"
     // buttons, badges, chips, search
   }
-}, l = {
+}, s = {
   dropdown: 1e3,
   sticky: 1020,
   fixed: 1030,
@@ -335,7 +335,7 @@ const n = {
   popover: 1060,
   tooltip: 1070,
   toast: 1080
-}, s = {
+}, g = {
   duration: {
     fast: "100ms",
     normal: "200ms",
@@ -347,24 +347,33 @@ const n = {
     // Industrial step feel
     easeInOut: "cubic-bezier(0.4, 0, 0.2, 1)"
   }
-}, g = {
+}, i = {
   xs: 0,
-  sm: 600,
-  md: 960,
-  lg: 1280,
-  xl: 1920
+  // móvil (base — mobile first)
+  sm: 640,
+  // móvil grande
+  md: 768,
+  // tablet
+  lg: 1024,
+  // laptop
+  xl: 1280,
+  // escritorio
+  "2xl": 1536
+  // escritorio ancho
+}, f = {
+  values: i
 }, d = {
   palette: r,
   contrast: t,
   typography: n,
-  textVariants: i,
-  spacing: a,
-  shadows: o,
-  borders: m,
-  zIndex: l,
-  transitions: s,
-  breakpoints: g
-}, f = (e) => ({
+  textVariants: a,
+  spacing: o,
+  shadows: m,
+  borders: l,
+  zIndex: s,
+  transitions: g,
+  breakpoints: i
+}, S = (e) => ({
   ...d,
   colors: {
     mode: e,
@@ -403,21 +412,22 @@ const n = {
 export {
   d as AI4U_DESIGN_TOKENS,
   r as AI4U_PALETTE,
-  m as BORDER_TOKENS,
-  g as BREAKPOINT_TOKENS,
+  l as BORDER_TOKENS,
+  i as BREAKPOINT_TOKENS,
   x as COMPONENT_SPACING,
-  h as COMPONENT_VARIANTS,
+  u as COMPONENT_VARIANTS,
   t as CONTRAST_PAIRS,
-  o as SHADOW_TOKENS,
-  a as SPACING_TOKENS,
-  u as SURFACE_PRESETS,
-  i as TEXT_VARIANTS,
-  s as TRANSITION_TOKENS,
+  f as MUI_BREAKPOINTS,
+  m as SHADOW_TOKENS,
+  o as SPACING_TOKENS,
+  y as SURFACE_PRESETS,
+  a as TEXT_VARIANTS,
+  g as TRANSITION_TOKENS,
   n as TYPOGRAPHY_TOKENS,
   p as TYPOGRAPHY_UTILITIES,
-  l as Z_INDEX_TOKENS,
-  f as createAI4UTokens,
-  y as useComponentColors,
-  T as useContrastColors
+  s as Z_INDEX_TOKENS,
+  S as createAI4UTokens,
+  T as useComponentColors,
+  N as useContrastColors
 };
 //# sourceMappingURL=index.js.map

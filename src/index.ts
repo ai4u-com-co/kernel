@@ -9,6 +9,8 @@ export * from './components/layouts';
 
 // Hooks
 export * from './hooks/useColors';
+export { useBreakpoint, useBreakpointUp, useIsMobile } from './hooks/useBreakpoint';
+export type { Breakpoint } from './hooks/useBreakpoint';
 
 // Context / Providers
 export * from './context/ThemeContext';
