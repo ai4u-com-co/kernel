@@ -19,9 +19,17 @@ Distribución: igual que `@ai4u/platform`, `@ai4u/mc-sso`, `@ai4u/design-system`
   `sap-b1-chat` (superset aditivo) tras verificar en el código real de
   `sap-b1-backend/lib/auth.ts` que `X-API-Key` se revisa primero y retorna de
   inmediato si es válido — el header `x-mc-secret` nunca se alcanza para requests
-  que ya traen una key válida (el caso de `mission-control`, siempre). Cero cambio
-  de comportamiento para ninguno de los dos, verificado con 6 tests que prueban
-  exactamente esa precedencia (`tests/backend-client.test.ts`).
+  que ya traen una key válida, verificado con 6 tests que prueban exactamente esa
+  precedencia (`tests/backend-client.test.ts`).
+
+  **Giro real al ejecutar la migración**: `mission-control` nunca terminó
+  importando este paquete. Al ir a rewirear su `BackendClient` local se encontró
+  que **nada lo instanciaba** (`grep "new BackendClient"` → 0 resultados) — el
+  único consumidor era una cadena de código muerto (`lib/chat/sap-context.ts` →
+  `lib/chat/system-prompt.ts`, éste último ya confirmado sin imports desde la
+  auditoría de arquitectura). Se borraron los 3 archivos en vez de migrarlos
+  (`mission-control#198`). Hoy el único consumidor real de `BackendClient` es
+  `sap-b1-chat` (`sap-b1-chat#11`).
 - **No**: la observabilidad (`bootstrapObservability`). Es lógica de arranque
   (kernel), no vocabulario — pertenece a `@ai4u/platform`, no acá.
 
