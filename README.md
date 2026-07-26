@@ -5,9 +5,12 @@ Etapa 2 de la migración a monorepo del ecosistema superAI: los paquetes compart
 un repo con historia preservada, para que cambiar el vocabulario compartido entre ellos
 sea un commit, no una coordinación manual entre 4 repos.
 
-**Piloto actual (jul-26-2026): solo `@ai4u/config`**, el paquete más chico (18 líneas,
-2 consumidores reales) y el de menor blast radius. `platform`/`mc-sso`/`sistemaDiseno`
-NO están acá todavía — se mueven después de validar el mecanismo con el que menos duele.
+**Estado (jul-26-2026): `config` y `platform` migrados.** `config` con el ciclo
+end-to-end probado en producción real (tag → espejo → bump-bot → PR → merge → deploy).
+`platform` (27 consumidores, el de mayor blast radius de los 4) con historia importada
+y build/type-check/test verificados en verde, `dist/` byte a byte idéntico al publicado
+— **sin publicar ningún tag nuevo todavía**, a propósito (ver nota abajo). `mc-sso` y
+`sistemaDiseno` siguen sin tocar.
 
 ## Por qué existe (y qué NO cambia para los 27+ consumidores)
 
@@ -23,6 +26,7 @@ workflow compila ese paquete y publica su contenido como un commit + tag en
 ```
 packages/
   config/     — @ai4u/config, historia importada de ai4u-com-co/config vía git subtree
+  platform/   — @ai4u/platform, historia importada de ai4u-com-co/platform vía git subtree
 ```
 
 ## Espejo — estado real
@@ -53,10 +57,19 @@ O vía UI: `https://github.com/ai4u-com-co/kernel/settings/secrets/actions/new`.
 Sin esos secrets, el workflow falla explícito (no en silencio) en el step
 "Verificar credencial".
 
+## Nota sobre `platform`: por qué no se taggeó todavía
+
+A diferencia de `config` (2 consumidores, bump trivial de bajo costo para probar el
+mecanismo completo), `platform` tiene **27 consumidores reales en producción**. El
+mecanismo de espejo ya está probado end-to-end con `config` — repetir esa prueba acá
+forzando un bump artificial dispararía `bump-bot` sobre los 27 a la vez, generando PRs
+reales en toda la org solo para "probar algo" que ya se probó. No se justifica.
+
+El primer tag real de `platform` desde acá se hace cuando haya un cambio real que
+publicar (un fix, una feature) — no antes.
+
 ## Siguiente paso (no hecho todavía)
 
-Repetir este mismo patrón con `platform` (27 consumidores), `mc-sso` (21) y
-`sistemaDiseno` (25) — en ese orden solo después de confirmar que el mecanismo de
-espejo funciona de punta a punta con `config` en un ciclo real (tag → push a
-`ai4u-com-co/config` → `bump-bot` lo detecta → PR draft en un consumidor real → CI
-verde). Ese ciclo real todavía no corrió.
+Repetir el mismo patrón de import + verificación de fidelidad con `mc-sso` (21
+consumidores) y `sistemaDiseno` (25, ~21MB de historia — decidir antes si se trae
+completa o se trunca).
