@@ -9,5 +9,5 @@ interface ExpandableSectionProps {
     showIcon?: boolean;
     sx?: SxProps<Theme>;
 }
-declare const ExpandableSection: ({ title, subtitle, children, defaultExpanded, variant, showIcon, sx, }: ExpandableSectionProps) => import("react/jsx-runtime").JSX.Element;
+declare const ExpandableSection: ({ title, subtitle, children, defaultExpanded, variant, showIcon, sx, }: ExpandableSectionProps) => React.JSX.Element;
 export default ExpandableSection;

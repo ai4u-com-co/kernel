@@ -1,2 +1,3 @@
-declare const Footer: () => import("react/jsx-runtime").JSX.Element;
+import { default as React } from 'react';
+declare const Footer: () => React.JSX.Element;
 export default Footer;

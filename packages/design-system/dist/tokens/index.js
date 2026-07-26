@@ -1,5 +1,5 @@
-import { a as t, A as r } from "../palette-Cg2N1Fyc.js";
-import { C as u, S as y, u as T, b as N } from "../palette-Cg2N1Fyc.js";
+import { C as t, A as r } from "../palette-n0sYhpzg.js";
+import { a as u, S as y, u as T, b as N } from "../palette-n0sYhpzg.js";
 const n = {
   // Familias de fuentes
   fontFamily: {

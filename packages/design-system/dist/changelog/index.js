@@ -1,6 +1,6 @@
 import { jsxs as i, jsx as s } from "react/jsx-runtime";
 import { useState as k, useRef as B, useEffect as w } from "react";
-import { A as e } from "../palette-Cg2N1Fyc.js";
+import { A as e } from "../palette-n0sYhpzg.js";
 const E = "https://changelog-service-silk.vercel.app", A = {
   feat: e.moderateBlue,
   // funcionalidad nueva → success/info

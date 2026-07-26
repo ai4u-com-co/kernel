@@ -5,15 +5,19 @@ Etapa 2 de la migración a monorepo del ecosistema superAI: los paquetes compart
 un repo con historia preservada, para que cambiar el vocabulario compartido entre ellos
 sea un commit, no una coordinación manual entre 4 repos.
 
-**Estado (jul-26-2026): `config`, `platform` y `mc-sso` migrados.** `config` con el
-ciclo end-to-end probado en producción real (tag → espejo → bump-bot → PR → merge →
-deploy). `platform` (27 consumidores) y `mc-sso` (21 consumidores) con historia
-importada y build/type-check/test verificados en verde, `dist/` byte a byte idéntico
-al publicado — **sin publicar tags nuevos todavía**, a propósito (ver nota abajo).
-`sistemaDiseno` sigue sin tocar.
+**Estado (jul-26-2026): los 4 paquetes migrados.** `config` con el ciclo end-to-end
+probado en producción real (tag → espejo → bump-bot → PR → merge → deploy). `platform`
+(27 consumidores), `mc-sso` (21) y `design-system`/`sistemaDiseno` (25) con historia
+importada, build/type-check en verde — **sin publicar tags nuevos todavía**, a propósito
+(ver nota abajo).
 
 Confirmado también: el pin interno `platform → mc-sso` (`github:ai4u-com-co/mc-sso#v1.1.0`,
 corregido en julio tras el bug del pin flotando) llegó correcto en la copia importada.
+
+**`design-system` es distinto a los otros 3 en un punto importante** (ver sección
+"Fidelidad del build" abajo): su `dist/` NO es byte a byte idéntico al publicado, y no
+es un bug — es no-determinismo conocido del minificador de Vite/Rollup entre entornos
+de build distintos, no una diferencia de código fuente.
 
 ## Por qué existe (y qué NO cambia para los 27+ consumidores)
 
@@ -28,10 +32,28 @@ workflow compila ese paquete y publica su contenido como un commit + tag en
 
 ```
 packages/
-  config/     — @ai4u/config, historia importada de ai4u-com-co/config vía git subtree
-  platform/   — @ai4u/platform, historia importada de ai4u-com-co/platform vía git subtree
-  mc-sso/     — @ai4u/mc-sso, historia importada de ai4u-com-co/mc-sso (rama master) vía git subtree
+  config/         — @ai4u/config, historia importada de ai4u-com-co/config vía git subtree
+  platform/       — @ai4u/platform, historia importada de ai4u-com-co/platform vía git subtree
+  mc-sso/         — @ai4u/mc-sso, historia importada de ai4u-com-co/mc-sso (rama master) vía git subtree
+  design-system/  — @ai4u/design-system, historia importada de ai4u-com-co/sistemaDiseno (rama master) vía git subtree
 ```
+
+**Nota de nombres — no tocado a propósito**: el script de type-check de `design-system`
+se llama `typecheck` (sin guion, documentado así en su propio `CLAUDE.md` — convención
+intencional, no un descuido), distinto al resto (`type-check`). `npm run type-check
+--workspaces --if-present` desde la raíz lo salta en silencio (`--if-present` no
+distingue "no existe" de "existe con otro nombre"). Verificarlo hoy requiere el comando
+explícito `npm run typecheck --workspace=packages/design-system` — corrido a mano,
+en verde.
+
+**Deuda real preexistente encontrada (no causada por esta migración, no corregida)**:
+`design-system` tiene **6+ archivos de test reales** (`src/**/__tests__/*.test.tsx`:
+Button, Navigation, Accessibility, SEOHead, Logo, ServiceCard) pero **ningún script
+`test` en `package.json`** — nunca corrieron en CI. No es un `vitest run` trivial de
+agregar: usa `@storybook/addon-vitest` en **modo navegador vía Playwright**
+(`@vitest/browser-playwright`), que necesita navegadores instalados y una config de
+Storybook — wirearlo de verdad es trabajo aparte, no algo para hacer de paso en un
+import de historia.
 
 ## Espejo — estado real
 
@@ -61,11 +83,11 @@ O vía UI: `https://github.com/ai4u-com-co/kernel/settings/secrets/actions/new`.
 Sin esos secrets, el workflow falla explícito (no en silencio) en el step
 "Verificar credencial".
 
-## Nota sobre `platform` y `mc-sso`: por qué no se taggearon todavía
+## Nota sobre `platform`, `mc-sso` y `design-system`: por qué no se taggearon todavía
 
 A diferencia de `config` (2 consumidores, bump trivial de bajo costo para probar el
-mecanismo completo), `platform` (27 consumidores) y `mc-sso` (21) tienen mucho más
-blast radius. El mecanismo de espejo ya está probado end-to-end con `config` —
+mecanismo completo), los otros 3 tienen mucho más blast radius (27, 21 y 25
+consumidores). El mecanismo de espejo ya está probado end-to-end con `config` —
 repetir esa prueba acá forzando un bump artificial dispararía `bump-bot` sobre
 decenas de consumidores reales a la vez, solo para "probar algo" que ya se probó.
 No se justifica.
@@ -73,8 +95,20 @@ No se justifica.
 El primer tag real de cada uno desde `kernel` se hace cuando haya un cambio real que
 publicar (un fix, una feature) — no antes.
 
+## Fidelidad del build — qué se verificó en cada paquete
+
+| Paquete | Compilador | `dist/` vs publicado |
+|---|---|---|
+| `config` | `tsc` | Byte a byte idéntico |
+| `platform` | `tsc` | Byte a byte idéntico |
+| `mc-sso` | `tsc` | Byte a byte idéntico |
+| `design-system` | Vite/Rollup | **No** idéntico — confirmado no-determinismo del minificador (dos builds seguidos en el mismo lugar SÍ son idénticos entre sí; la diferencia es contra el publicado en otro entorno de build). Nombres de variables minificadas distintos, mismo código fuente (mismo commit vía subtree), typecheck limpio. |
+
+Los 4: historia completa preservada vía `git subtree` (`config`/`platform` desde
+`main`, `mc-sso`/`sistemaDiseno` desde `master`), CI real de `kernel` en verde.
+
 ## Siguiente paso (no hecho todavía)
 
-Repetir el mismo patrón de import + verificación de fidelidad con `sistemaDiseno`
-(25 consumidores, ~21MB de historia — decidir antes si se trae completa o se trunca,
-son assets de marca, no solo código).
+Los 4 paquetes están importados. Queda: decidir destino final de los 4 repos-espejo,
+y cuándo (si alguna vez) forzar el primer tag real de cada uno — ver todolist de la
+migración en la conversación, no acá.

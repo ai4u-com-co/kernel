@@ -1,3 +1,4 @@
+import { default as React } from 'react';
 interface NavigationItem {
     id: string;
     label: string;
@@ -11,5 +12,5 @@ interface NavigationProps {
     variant?: 'horizontal' | 'vertical' | 'tabs';
     className?: string;
 }
-declare const Navigation: ({ items, activeItem, onItemClick, variant, className }: NavigationProps) => import("react/jsx-runtime").JSX.Element;
+declare const Navigation: ({ items, activeItem, onItemClick, variant, className }: NavigationProps) => React.JSX.Element;
 export default Navigation;

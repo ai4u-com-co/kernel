@@ -1,3 +1,4 @@
+import { default as React } from 'react';
 export interface ChangelogPillProps {
     /**
      * clientId / tenant registrado en el servicio (ej. "tamaprint", "flexoimpresos").
@@ -21,5 +22,5 @@ export interface ChangelogPillProps {
  * Lee del servicio central (GET público) y muestra el historial en un popover.
  * Multitenant: `client` y `app` son requeridos.
  */
-export declare const ChangelogPill: ({ client, app, serviceUrl, limit, mode, align, }: ChangelogPillProps) => import("react/jsx-runtime").JSX.Element | null;
+export declare const ChangelogPill: ({ client, app, serviceUrl, limit, mode, align, }: ChangelogPillProps) => React.JSX.Element | null;
 export default ChangelogPill;

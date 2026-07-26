@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { default as React, ReactNode } from 'react';
 export interface ModalProps {
     open: boolean;
     onClose: () => void;
@@ -6,5 +6,5 @@ export interface ModalProps {
     maxWidth?: number | string;
     sx?: any;
 }
-export declare const Modal: ({ open, onClose, children, maxWidth, sx }: ModalProps) => import("react/jsx-runtime").JSX.Element | null;
+export declare const Modal: ({ open, onClose, children, maxWidth, sx }: ModalProps) => React.JSX.Element | null;
 export default Modal;

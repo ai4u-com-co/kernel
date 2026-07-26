@@ -1,3 +1,4 @@
+import { default as React } from 'react';
 type ButtonVariant = 'primary' | 'secondary' | 'outline';
 type ButtonSize = 'small' | 'medium' | 'large';
 interface DiagnosticCTAProps {
@@ -8,5 +9,5 @@ interface DiagnosticCTAProps {
     className?: string;
     sx?: any;
 }
-export declare const DiagnosticCTA: ({ variant, size, showIcon, text, className, sx, }: DiagnosticCTAProps) => import("react/jsx-runtime").JSX.Element;
+export declare const DiagnosticCTA: ({ variant, size, showIcon, text, className, sx, }: DiagnosticCTAProps) => React.JSX.Element;
 export default DiagnosticCTA;

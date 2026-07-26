@@ -318,10 +318,10 @@ const e = {
 });
 export {
   e as A,
-  t as C,
+  a as C,
   i as S,
-  a,
+  t as a,
   d as b,
   c as u
 };
-//# sourceMappingURL=palette-Cg2N1Fyc.js.map
+//# sourceMappingURL=palette-n0sYhpzg.js.map

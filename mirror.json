@@ -1,5 +1,6 @@
 {
   "config": "ai4u-com-co/config",
   "platform": "ai4u-com-co/platform",
-  "mc-sso": "ai4u-com-co/mc-sso"
+  "mc-sso": "ai4u-com-co/mc-sso",
+  "design-system": "ai4u-com-co/sistemaDiseno"
 }

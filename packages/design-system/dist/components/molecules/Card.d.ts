@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { default as React, ReactNode } from 'react';
 import { CardProps as MuiCardProps } from '@mui/material';
 interface CardProps extends Omit<MuiCardProps, 'variant'> {
     children?: ReactNode;
@@ -8,5 +8,5 @@ interface CardProps extends Omit<MuiCardProps, 'variant'> {
     label?: string;
     sx?: any;
 }
-export declare const Card: ({ children, variant, elevation, showContent, label, sx, ...props }: CardProps) => import("react/jsx-runtime").JSX.Element;
+export declare const Card: ({ children, variant, elevation, showContent, label, sx, ...props }: CardProps) => React.JSX.Element;
 export default Card;

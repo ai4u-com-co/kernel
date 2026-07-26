@@ -5,5 +5,5 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
     children?: React.ReactNode;
     sx?: any;
 }
-export declare const Select: ({ size, error, sx, children, ...props }: SelectProps) => import("react/jsx-runtime").JSX.Element;
+export declare const Select: ({ size, error, sx, children, ...props }: SelectProps) => React.JSX.Element;
 export default Select;

@@ -7,5 +7,5 @@ interface ProgressiveContentProps {
     variant?: 'inline' | 'separated' | 'card';
     maxHeight?: number;
 }
-declare const ProgressiveContent: ({ summary, details, showDetails, onToggle, variant, maxHeight }: ProgressiveContentProps) => import("react/jsx-runtime").JSX.Element;
+declare const ProgressiveContent: ({ summary, details, showDetails, onToggle, variant, maxHeight }: ProgressiveContentProps) => React.JSX.Element;
 export default ProgressiveContent;
