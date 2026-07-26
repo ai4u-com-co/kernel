@@ -1,0 +1,17 @@
+{
+  "name": "@ai4u/mc-sso",
+  "version": "1.1.0",
+  "description": "MC-token SSO protocol for AI4U services",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5",
+    "vitest": "^2"
+  }
+}
