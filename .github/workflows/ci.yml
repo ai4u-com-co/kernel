@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (todos los paquetes)
+        run: npm run type-check
+
+      - name: Test (todos los paquetes)
+        run: npm run test
+
+      - name: Build (todos los paquetes)
+        run: npm run build
+
+      - name: Verificar que dist/ de cada paquete coincide con el build fresco
+        run: |
+          if ! git diff --quiet -- packages/*/dist; then
+            echo "::error::dist/ de al menos un paquete está desactualizado respecto al build fresco. Corre 'npm run build' y commitea el resultado."
+            git diff --stat -- packages/*/dist
+            exit 1
+          fi

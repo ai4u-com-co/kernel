@@ -1,0 +1,51 @@
+# kernel
+
+Etapa 2 de la migración a monorepo del ecosistema superAI: los paquetes compartidos
+(`@ai4u/platform`, `@ai4u/mc-sso`, `@ai4u/design-system`, `@ai4u/config`) fusionados en
+un repo con historia preservada, para que cambiar el vocabulario compartido entre ellos
+sea un commit, no una coordinación manual entre 4 repos.
+
+**Piloto actual (jul-26-2026): solo `@ai4u/config`**, el paquete más chico (18 líneas,
+2 consumidores reales) y el de menor blast radius. `platform`/`mc-sso`/`sistemaDiseno`
+NO están acá todavía — se mueven después de validar el mecanismo con el que menos duele.
+
+## Por qué existe (y qué NO cambia para los 27+ consumidores)
+
+Los repos `ai4u-com-co/config` (y luego `platform`, `mc-sso`, `sistemaDiseno`) siguen
+existiendo como **espejos de solo lectura**: cuando se tagea `config-vX.Y.Z` acá, un
+workflow compila ese paquete y publica su contenido como un commit + tag en
+`ai4u-com-co/config`. Los consumidores siguen instalando exactamente
+`"@ai4u/config": "github:ai4u-com-co/config#vX.Y.Z"` — nada cambia del lado de afuera,
+`bump-bot` sigue funcionando sin tocarlo.
+
+## Estructura
+
+```
+packages/
+  config/     — @ai4u/config, historia importada de ai4u-com-co/config vía git subtree
+```
+
+## Espejo — estado real
+
+**El mecanismo de build está probado**: `npm run build` desde la raíz genera
+`packages/config/dist/` **byte a byte idéntico** al `dist/` actualmente publicado en
+`ai4u-com-co/config` (verificado con `diff -r`, no solo "el build no truena").
+
+**La automatización (`.github/workflows/mirror.yml`) existe pero NO está activa
+todavía**: necesita un token con permiso de escritura sobre `ai4u-com-co/config`
+(secret `KERNEL_MIRROR_TOKEN`), que no se configuró — copiar o compartir la GitHub App
+de `bump-bot` (que ya tiene ese acceso) a este repo es una decisión de secretos que
+requiere autorización explícita, no algo que se resuelve solo. Hasta entonces, el
+workflow falla explícito (no en silencio) si se dispara sin el secret.
+
+**El primer espejo real, si se decide hacer uno, se hace a mano** con el mismo
+contenido que generaría el workflow — `rsync` de `packages/config/` (sin `.git`) hacia
+un checkout de `ai4u-com-co/config`, commit, tag.
+
+## Siguiente paso (no hecho todavía)
+
+Repetir este mismo patrón con `platform` (27 consumidores), `mc-sso` (21) y
+`sistemaDiseno` (25) — en ese orden solo después de confirmar que el mecanismo de
+espejo funciona de punta a punta con `config` en un ciclo real (tag → push a
+`ai4u-com-co/config` → `bump-bot` lo detecta → PR draft en un consumidor real → CI
+verde). Ese ciclo real todavía no corrió.

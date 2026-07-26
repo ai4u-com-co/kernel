@@ -1,0 +1,104 @@
+name: Espejo de paquete
+
+# Al taggear "<paquete>-vX.Y.Z" (ej. config-v0.2.0), compila ESE paquete y publica su
+# contenido (src/ + dist/) como commit + tag en su repo espejo (ej. ai4u-com-co/config),
+# preservando el contrato externo: los consumidores existentes siguen instalando
+# "github:ai4u-com-co/<paquete>#vX.Y.Z" sin enterarse de que el código fuente real vive
+# en este monorepo.
+#
+# PASO HUMANO PENDIENTE (no activado todavía): este workflow necesita un token con permiso
+# de escritura sobre los repos espejo (config, y más adelante platform/mc-sso/sistemaDiseno) —
+# distinto del GITHUB_TOKEN automático, que solo alcanza este mismo repo. La opción más barata
+# es reusar el mecanismo ya existente de la GitHub App de bump-bot (secrets
+# BUMP_BOT_APP_CLIENT_ID/BUMP_BOT_APP_PRIVATE_KEY, ya instalada con acceso a toda la org) en
+# vez de crear una credencial nueva — pero moverla o compartirla a este repo es una acción de
+# secretos que requiere autorización explícita, no algo que un agente decide solo. Hasta que
+# eso se resuelva, el primer espejo de cada paquete se hace a mano (ver README).
+#
+# Sin ese secreto configurado, el job de push fallará explícitamente en vez de fallar en
+# silencio — a propósito, para que sea obvio que falta el paso humano.
+
+on:
+  push:
+    tags:
+      - '*-v*.*.*'
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolver paquete y versión del tag
+        id: parse
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$REF_NAME" =~ ^([a-z0-9-]+)-(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::tag '$REF_NAME' no matchea el formato <paquete>-vX.Y.Z"
+            exit 1
+          fi
+          PACKAGE="${BASH_REMATCH[1]}"
+          VERSION="${BASH_REMATCH[2]}"
+          if [ ! -d "packages/$PACKAGE" ]; then
+            echo "::error::no existe packages/$PACKAGE en este repo"
+            exit 1
+          fi
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Leer sourceRepo del paquete (mirror.json)
+        id: mirror
+        env:
+          PACKAGE: ${{ steps.parse.outputs.package }}
+        run: |
+          set -euo pipefail
+          MIRROR_REPO="$(jq -r --arg p "$PACKAGE" '.[$p]' mirror.json)"
+          if [ -z "$MIRROR_REPO" ] || [ "$MIRROR_REPO" = "null" ]; then
+            echo "::error::$PACKAGE no tiene repo espejo declarado en mirror.json"
+            exit 1
+          fi
+          echo "repo=$MIRROR_REPO" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build del paquete
+        working-directory: packages/${{ steps.parse.outputs.package }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Push del contenido al repo espejo
+        env:
+          # Token con permiso de escritura sobre el repo espejo. NO configurado todavía
+          # (ver comentario de cabecera) — este step falla explícito hasta que se resuelva.
+          MIRROR_TOKEN: ${{ secrets.KERNEL_MIRROR_TOKEN }}
+          MIRROR_REPO: ${{ steps.mirror.outputs.repo }}
+          PACKAGE: ${{ steps.parse.outputs.package }}
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "::error::falta el secret KERNEL_MIRROR_TOKEN — paso humano pendiente, ver cabecera de este workflow."
+            exit 1
+          fi
+          git config user.name "kernel-mirror-bot"
+          git config user.email "kernel-mirror-bot@users.noreply.github.com"
+          WORK_DIR="$(mktemp -d)"
+          git clone --depth 1 "https://x-access-token:${MIRROR_TOKEN}@github.com/${MIRROR_REPO}.git" "$WORK_DIR"
+          rsync -a --delete --exclude=.git "packages/${PACKAGE}/" "$WORK_DIR/"
+          cd "$WORK_DIR"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Sin cambios de contenido, solo tag."
+          else
+            git commit -m "chore: sync desde ai4u-com-co/kernel packages/${PACKAGE} (${VERSION})"
+            git push
+          fi
+          git tag "${VERSION}"
+          git push origin "${VERSION}"
