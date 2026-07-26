@@ -31,16 +31,27 @@ packages/
 `packages/config/dist/` **byte a byte idéntico** al `dist/` actualmente publicado en
 `ai4u-com-co/config` (verificado con `diff -r`, no solo "el build no truena").
 
-**La automatización (`.github/workflows/mirror.yml`) existe pero NO está activa
-todavía**: necesita un token con permiso de escritura sobre `ai4u-com-co/config`
-(secret `KERNEL_MIRROR_TOKEN`), que no se configuró — copiar o compartir la GitHub App
-de `bump-bot` (que ya tiene ese acceso) a este repo es una decisión de secretos que
-requiere autorización explícita, no algo que se resuelve solo. Hasta entonces, el
-workflow falla explícito (no en silencio) si se dispara sin el secret.
+**La automatización (`.github/workflows/mirror.yml`) reusa la GitHub App de
+`bump-bot`** (mismo mecanismo ya validado en `ai4u-com-co/bump-bot#bump.yml`): mintea
+un token de instalación acotado solo al repo espejo que corresponde, vía
+`actions/create-github-app-token@v3`.
 
-**El primer espejo real, si se decide hacer uno, se hace a mano** con el mismo
-contenido que generaría el workflow — `rsync` de `packages/config/` (sin `.git`) hacia
-un checkout de `ai4u-com-co/config`, commit, tag.
+### Credencial [PASO HUMANO]
+
+Los secrets `BUMP_BOT_APP_CLIENT_ID` / `BUMP_BOT_APP_PRIVATE_KEY` viven hoy solo en el
+repo `bump-bot` — GitHub nunca expone el valor de un secreto ya configurado (no hay
+API para leerlo, ni con autorización), así que hace falta que alguien con acceso a la
+clave privada original la agregue también acá:
+
+```bash
+gh secret set BUMP_BOT_APP_CLIENT_ID --repo ai4u-com-co/kernel --body "<mismo valor que en bump-bot>"
+gh secret set BUMP_BOT_APP_PRIVATE_KEY --repo ai4u-com-co/kernel --body "$(cat ruta/a/la/clave-privada.pem)"
+```
+
+O vía UI: `https://github.com/ai4u-com-co/kernel/settings/secrets/actions/new`.
+
+Sin esos secrets, el workflow falla explícito (no en silencio) en el step
+"Verificar credencial".
 
 ## Siguiente paso (no hecho todavía)
 

@@ -6,17 +6,16 @@ name: Espejo de paquete
 # "github:ai4u-com-co/<paquete>#vX.Y.Z" sin enterarse de que el código fuente real vive
 # en este monorepo.
 #
-# PASO HUMANO PENDIENTE (no activado todavía): este workflow necesita un token con permiso
-# de escritura sobre los repos espejo (config, y más adelante platform/mc-sso/sistemaDiseno) —
-# distinto del GITHUB_TOKEN automático, que solo alcanza este mismo repo. La opción más barata
-# es reusar el mecanismo ya existente de la GitHub App de bump-bot (secrets
-# BUMP_BOT_APP_CLIENT_ID/BUMP_BOT_APP_PRIVATE_KEY, ya instalada con acceso a toda la org) en
-# vez de crear una credencial nueva — pero moverla o compartirla a este repo es una acción de
-# secretos que requiere autorización explícita, no algo que un agente decide solo. Hasta que
-# eso se resuelva, el primer espejo de cada paquete se hace a mano (ver README).
+# Credencial: reusa la GitHub App de bump-bot (mismo mecanismo ya validado en
+# ai4u-com-co/bump-bot#bump.yml — secrets BUMP_BOT_APP_CLIENT_ID/BUMP_BOT_APP_PRIVATE_KEY,
+# App instalada en la org con "All repositories"). Mintea un token de instalación acotado
+# SOLO al repo espejo del paquete que se está publicando (`repositories:` explícito) — no
+# un PAT largo con acceso a toda la org.
 #
-# Sin ese secreto configurado, el job de push fallará explícitamente en vez de fallar en
-# silencio — a propósito, para que sea obvio que falta el paso humano.
+# PASO HUMANO: esos 2 secrets viven hoy solo en el repo `bump-bot` — GitHub nunca expone
+# el valor de un secreto ya configurado (ni con autorización, no hay forma de leerlo por
+# API), así que hace falta que alguien con acceso a la clave privada original la agregue
+# también acá. Sin esos secrets, el step de abajo falla explícito, no en silencio.
 
 on:
   push:
@@ -62,6 +61,7 @@ jobs:
             exit 1
           fi
           echo "repo=$MIRROR_REPO" >> "$GITHUB_OUTPUT"
+          echo "repo_name=${MIRROR_REPO#*/}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
@@ -73,20 +73,30 @@ jobs:
           npm ci
           npm run build
 
+      - name: Verificar credencial
+        run: |
+          if [ -z "${{ secrets.BUMP_BOT_APP_CLIENT_ID }}" ] || [ -z "${{ secrets.BUMP_BOT_APP_PRIVATE_KEY }}" ]; then
+            echo "::error::Faltan los secrets BUMP_BOT_APP_CLIENT_ID / BUMP_BOT_APP_PRIVATE_KEY en este repo (kernel) — mismos valores que ya existen en ai4u-com-co/bump-bot. Ver README, sección 'Credencial [PASO HUMANO]'."
+            exit 1
+          fi
+
+      - name: Mintear token de instalación (GitHub App), acotado al repo espejo
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BUMP_BOT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.BUMP_BOT_APP_PRIVATE_KEY }}
+          owner: ai4u-com-co
+          repositories: ${{ steps.mirror.outputs.repo_name }}
+
       - name: Push del contenido al repo espejo
         env:
-          # Token con permiso de escritura sobre el repo espejo. NO configurado todavía
-          # (ver comentario de cabecera) — este step falla explícito hasta que se resuelva.
-          MIRROR_TOKEN: ${{ secrets.KERNEL_MIRROR_TOKEN }}
+          MIRROR_TOKEN: ${{ steps.app-token.outputs.token }}
           MIRROR_REPO: ${{ steps.mirror.outputs.repo }}
           PACKAGE: ${{ steps.parse.outputs.package }}
           VERSION: ${{ steps.parse.outputs.version }}
         run: |
           set -euo pipefail
-          if [ -z "$MIRROR_TOKEN" ]; then
-            echo "::error::falta el secret KERNEL_MIRROR_TOKEN — paso humano pendiente, ver cabecera de este workflow."
-            exit 1
-          fi
           git config user.name "kernel-mirror-bot"
           git config user.email "kernel-mirror-bot@users.noreply.github.com"
           WORK_DIR="$(mktemp -d)"
