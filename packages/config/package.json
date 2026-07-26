@@ -1,6 +1,6 @@
 {
   "name": "@ai4u/config",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Config compartida del ecosistema superAI: lee valores no-secretos (URLs, feature flags, dominios) desde la tabla system_settings de Mission Control, con fallback automático a process.env.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
