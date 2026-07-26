@@ -113,8 +113,20 @@ publicar (un fix, una feature) — no antes.
 Los 5: historia completa preservada vía `git subtree` (`config`/`platform`/`contracts`
 desde `main`, `mc-sso`/`sistemaDiseno` desde `master`), CI real de `kernel` en verde.
 
-## Siguiente paso (no hecho todavía)
+## Decisión: los repos-espejo quedan para siempre
 
-Los 4 paquetes están importados. Queda: decidir destino final de los 4 repos-espejo,
-y cuándo (si alguna vez) forzar el primer tag real de cada uno — ver todolist de la
-migración en la conversación, no acá.
+`ai4u-com-co/config`, `platform`, `mc-sso` y `sistemaDiseno` **no se retiran**. Razones:
+
+1. La arquitectura de la Etapa 2 se diseñó entera alrededor de la invisibilidad para
+   los consumidores — 27+21+25+1 repos reales instalan vía `github:owner/repo#tag`.
+   Migrarlos a instalar directo desde `kernel` volvería a tocar cada uno de esos
+   consumidores, exactamente la disrupción que esta etapa evitó.
+2. No hay costo real de mantenerlos: `mirror.yml` los sincroniza solo, no son
+   mantenimiento manual — no hay "deuda" que retirarlos resuelva.
+3. Reabrir esto solo tendría sentido si el ecosistema entero migrara a instalar
+   paquetes directo desde `kernel` (un cambio de convención de instalación en 74+
+   repos) — eso es una decisión de producto/infraestructura mucho más grande que
+   esta migración, no algo a decidir de paso acá.
+
+`kernel` queda como la fuente de verdad del código; los 4 repos, como la interfaz
+pública estable hacia los consumidores. Sin fecha de retiro.
