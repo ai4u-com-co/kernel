@@ -97,12 +97,18 @@ jobs:
           VERSION: ${{ steps.parse.outputs.version }}
         run: |
           set -euo pipefail
-          git config user.name "kernel-mirror-bot"
-          git config user.email "kernel-mirror-bot@users.noreply.github.com"
           WORK_DIR="$(mktemp -d)"
           git clone --depth 1 "https://x-access-token:${MIRROR_TOKEN}@github.com/${MIRROR_REPO}.git" "$WORK_DIR"
           rsync -a --delete --exclude=.git "packages/${PACKAGE}/" "$WORK_DIR/"
           cd "$WORK_DIR"
+          # git config --local: el clone de arriba es un .git DISTINTO al del checkout de este
+          # job (vive en $WORK_DIR, no en el working directory por defecto) — configurar el
+          # ident ANTES del cd, o con --global, no alcanza (bug real encontrado jul-26-2026,
+          # mismo patrón ya documentado en bump-bot/scripts/bump-consumer.sh: "empty ident name"
+          # en runner limpio sin git config previo, invisible en local porque el gitconfig del
+          # dev ya lo tenía seteado).
+          git config user.name "kernel-mirror-bot"
+          git config user.email "kernel-mirror-bot@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then
             echo "Sin cambios de contenido, solo tag."
