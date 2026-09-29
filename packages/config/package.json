@@ -1,13 +1,24 @@
 {
   "name": "@ai4u/config",
-  "version": "0.1.1",
-  "description": "Config compartida del ecosistema superAI: lee valores no-secretos (URLs, feature flags, dominios) desde la tabla system_settings de Mission Control, con fallback automático a process.env.",
+  "version": "0.2.0",
+  "description": "Config compartida del ecosistema superAI: contrato de variables de entorno (nombres canónicos, alias, llaves por tenant) y lectura de valores no-secretos desde system_settings de Mission Control con fallback a process.env.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "default": "./dist/env.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "env": [
+        "dist/env.d.ts"
+      ]
     }
   },
   "files": [
