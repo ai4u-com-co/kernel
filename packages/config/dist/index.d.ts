@@ -14,4 +14,5 @@ export interface ConfigOptions {
 export declare function getConfig(key: string, opts?: ConfigOptions): Promise<string | undefined>;
 /** Limpia el cache en memoria. Útil en tests o justo después de rotar un valor en Supabase. */
 export declare function clearConfigCache(): void;
+export * from "./env";
 //# sourceMappingURL=index.d.ts.map
