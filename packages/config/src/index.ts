@@ -95,3 +95,6 @@ export function clearConfigCache(): void {
   client = null
   clientCacheKey = ""
 }
+
+// Contrato de variables de entorno (v0.2.0). También disponible sin Supabase en `@ai4u/config/env`.
+export * from "./env"
