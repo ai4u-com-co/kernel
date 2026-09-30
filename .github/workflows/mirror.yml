@@ -89,7 +89,12 @@ jobs:
           owner: ai4u-com-co
           repositories: ${{ steps.mirror.outputs.repo_name }}
 
+      # Los `git push` al espejo se reintentan (3 intentos, esperas de 20 s y 40 s) solo ante
+      # errores transitorios — 403 "Permission ... denied to ai4u-bump-bot[bot]" justo después
+      # de mintear el token, 5xx, red. Si los 3 fallan así, se mintea un token nuevo y se hace
+      # una última ronda (ver los 2 steps siguientes). Lógica en .github/scripts/mirror-push-retry.sh.
       - name: Push del contenido al repo espejo
+        id: push
         env:
           MIRROR_TOKEN: ${{ steps.app-token.outputs.token }}
           MIRROR_REPO: ${{ steps.mirror.outputs.repo }}
@@ -97,7 +102,9 @@ jobs:
           VERSION: ${{ steps.parse.outputs.version }}
         run: |
           set -euo pipefail
+          source "$GITHUB_WORKSPACE/.github/scripts/mirror-push-retry.sh"
           WORK_DIR="$(mktemp -d)"
+          echo "work_dir=$WORK_DIR" >> "$GITHUB_OUTPUT"
           git clone --depth 1 "https://x-access-token:${MIRROR_TOKEN}@github.com/${MIRROR_REPO}.git" "$WORK_DIR"
           rsync -a --delete --exclude=.git "packages/${PACKAGE}/" "$WORK_DIR/"
           cd "$WORK_DIR"
@@ -114,7 +121,42 @@ jobs:
             echo "Sin cambios de contenido, solo tag."
           else
             git commit -m "chore: sync desde ai4u-com-co/kernel packages/${PACKAGE} (${VERSION})"
-            git push
           fi
-          git tag "${VERSION}"
-          git push origin "${VERSION}"
+          # El clone --depth 1 puede traer el tag si ya apunta a HEAD (re-corrida): no recrearlo.
+          git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null || git tag "${VERSION}"
+          rc=0
+          mirror_publish "${VERSION}" || rc=$?
+          if [ "$rc" -eq 0 ]; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          elif [ "$rc" -eq 2 ]; then
+            echo "done=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Push al espejo agotó los reintentos por errores transitorios; se re-mintea el token y se reintenta."
+          else
+            exit 1
+          fi
+
+      - name: Re-mintear token de instalación (solo tras errores transitorios)
+        id: app-token-retry
+        if: steps.push.outputs.done == 'false'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BUMP_BOT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.BUMP_BOT_APP_PRIVATE_KEY }}
+          owner: ai4u-com-co
+          repositories: ${{ steps.mirror.outputs.repo_name }}
+
+      - name: Reintento del push al espejo con el token nuevo
+        if: steps.push.outputs.done == 'false'
+        env:
+          MIRROR_TOKEN: ${{ steps.app-token-retry.outputs.token }}
+          MIRROR_REPO: ${{ steps.mirror.outputs.repo }}
+          VERSION: ${{ steps.parse.outputs.version }}
+          WORK_DIR: ${{ steps.push.outputs.work_dir }}
+        run: |
+          set -euo pipefail
+          source "$GITHUB_WORKSPACE/.github/scripts/mirror-push-retry.sh"
+          cd "$WORK_DIR"
+          git remote set-url origin "https://x-access-token:${MIRROR_TOKEN}@github.com/${MIRROR_REPO}.git"
+          # Idempotente: no re-empuja contenido que ya llegó ni falla si el tag ya está en el
+          # mismo commit. Cualquier fallo acá (transitorio o no) termina el job en rojo.
+          mirror_publish "${VERSION}"
