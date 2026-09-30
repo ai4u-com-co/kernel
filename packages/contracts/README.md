@@ -156,4 +156,5 @@ client.consumer // "sap-b1-chat"
 ```
 
 > La auth S2S heredada (`x-mc-secret` + el placeholder `"S2S_AUTH"` como X-API-Key)
-> sigue igual en 0.6.0; está marcada con `TODO(fase3)` en `src/backend-client.ts`.
+> sigue igual en la versión actual (0.7.0): `extraHeaders` suma la identidad OIDC al
+> lado, no la reemplaza. Está marcada con `TODO(fase3)` en `src/backend-client.ts`.

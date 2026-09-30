@@ -4,13 +4,17 @@ Preocupaciones transversales del ecosistema **superAI**: logging, errores tipado
 auth (identidad + permisos). Un único paquete que toda app consume igual, para que
 estas funcionalidades NO se copien-peguen en cada módulo.
 
-Distribución: igual que `@ai4u/mc-sso` y `@ai4u/design-system` — repo GitHub con `dist/`
-commiteado, consumido por tag: `"@ai4u/platform": "github:donchelo/platform#vX.Y.Z"`.
+Distribución: igual que `@ai4u/mc-sso` y `@ai4u/design-system`. El código fuente vive en el
+monorepo [`ai4u-com-co/kernel`](https://github.com/ai4u-com-co/kernel) (`packages/platform/`,
+con `dist/` commiteado). Cada tag `platform-vX.Y.Z` de kernel se publica, vía
+`.github/workflows/mirror.yml`, como commit + tag `vX.Y.Z` en el espejo de solo lectura
+`ai4u-com-co/platform`, que es de donde instalan los consumidores:
+`"@ai4u/platform": "github:ai4u-com-co/platform#vX.Y.Z"`.
 
 ## Instalación
 
 ```bash
-npm install github:donchelo/platform
+npm install github:ai4u-com-co/platform#vX.Y.Z   # siempre pineado por tag, nunca una rama
 ```
 
 Depende de `@ai4u/mc-sso` (para verificar sesiones SSO).
@@ -115,11 +119,21 @@ npm run build     # tsc → dist/
 
 ## Publicar una versión
 
-```bash
-npm run build                    # regenerar dist/
-git add -A && git commit -m "vX.Y.Z: <cambios>"
-git tag vX.Y.Z
-git push origin main --tags
-```
+Se publica desde `ai4u-com-co/kernel`, nunca commiteando directo en el espejo
+`ai4u-com-co/platform` (el próximo sync lo pisaría):
 
-Luego, en cada consumidor, pinear: `"@ai4u/platform": "github:donchelo/platform#vX.Y.Z"`.
+1. En una rama de kernel: subir `version` en `packages/platform/package.json`, anotar el
+   cambio en `packages/platform/CHANGELOG.md` y regenerar `dist/`
+   (`npm run build --workspace=packages/platform`, o `npm run build` desde la raíz).
+   El CI de kernel falla si `dist/` no coincide con el build fresco.
+2. PR a `main` de kernel, con CI en verde, y merge.
+3. Tag sobre el commit mergeado, con prefijo de paquete:
+
+   ```bash
+   git tag platform-vX.Y.Z
+   git push origin platform-vX.Y.Z
+   ```
+
+4. `mirror.yml` compila el paquete y publica commit + tag `vX.Y.Z` en `ai4u-com-co/platform`.
+5. En cada consumidor, pinear `"@ai4u/platform": "github:ai4u-com-co/platform#vX.Y.Z"`
+   (el bump-bot de la org es el que abre esos PRs en los consumidores).
