@@ -40,13 +40,18 @@ Distribución: igual que `@ai4u/platform`, `@ai4u/mc-sso`, `@ai4u/design-system`
   un `summary` normalizado: cada agente conserva su propia forma de reportar
   qué hizo, porque forzar un shape común ahí sería inventar acoplamiento que
   no existe en la realidad.
+- **Sí (desde v0.6.0)**: atribución por app en el gateway. `BackendClient` manda
+  `x-consumer` con el nombre de la app — de la opción `consumer`, o si no, de la env
+  `SERVICE_ID` (canónica en `@ai4u/config`) / su alias `PLATFORM_SERVICE`. Sin
+  ninguno, no manda el header. Es solo atribución: el gateway lo registra en
+  `platform_logs` y nunca autoriza con él. Ver [Atribución con `x-consumer`](#atribución-con-x-consumer).
 - **No**: la observabilidad (`bootstrapObservability`). Es lógica de arranque
   (kernel), no vocabulario — pertenece a `@ai4u/platform`, no acá.
 
 ## Instalación
 
 ```bash
-npm install github:ai4u-com-co/contracts#v0.3.0
+npm install github:ai4u-com-co/contracts#v0.6.0
 ```
 
 ## Uso
@@ -56,6 +61,9 @@ import { ENTITY_MAP, type EntityConfig, BackendClient, type IAgentAdapter } from
 
 const cfg = ENTITY_MAP["ventas/pedidos"]
 const client = new BackendClient(tenantId, apiKey)
+
+// Atribución en el gateway (opcional; si no, usa SERVICE_ID / PLATFORM_SERVICE):
+const atribuido = new BackendClient(tenantId, apiKey, { consumer: "mission-control" })
 
 const miAgente: IAgentAdapter = {
   id: "cobro-cartera",
@@ -67,3 +75,22 @@ const miAgente: IAgentAdapter = {
   },
 }
 ```
+
+## Atribución con `x-consumer`
+
+Orden de resolución (en cada request): opción `consumer` > env `SERVICE_ID` > env
+`PLATFORM_SERVICE` > sin header. Valores vacíos o solo espacios cuentan como ausentes.
+
+Convención del valor:
+- Apps en Vercel: el **nombre del proyecto en Vercel** (`mission-control`,
+  `desarrollo-oc`, `sap-b1-chat`...), no el del repo.
+- Servicios en Docker (OrderLoader): el nombre de servicio de logs,
+  `orderloader-${TENANT}` (`orderloader-tamaprint`, `orderloader-flexoimpresos`).
+
+```ts
+const client = new BackendClient("tamaprint", apiKey, { consumer: "sap-b1-chat" })
+client.consumer // "sap-b1-chat"
+```
+
+> La auth S2S heredada (`x-mc-secret` + el placeholder `"S2S_AUTH"` como X-API-Key)
+> sigue igual en 0.6.0; está marcada con `TODO(fase3)` en `src/backend-client.ts`.
