@@ -17,7 +17,8 @@
 - `@ai4u/platform/logger`: `serializeErr` enmascara claves y tokens en `message` y `stack`
   (query `?key=`/`token=`/`signature=`…, `Bearer`/`Basic`, JWT, claves `sk-…`/`AIza…`/`ghp_…`/
   `sb_secret_…`, credenciales `user:clave@` en URL). Nueva función pura `redactSecrets(text)`.
-  Los tokens se enmascaran completos (sin límite de longitud por token). Se redacta primero
+  Los correos se enmascaran a `[correo]@dominio`; es PII, no un secreto (errores de SMTP
+  traen el destinatario). Los tokens se enmascaran completos (sin límite de longitud por token). Se redacta primero
   y luego se recorta: `message` a 16 384 caracteres y `stack` a 32 768 (`…[truncado]`);
   entrada acotada y regex ancladas con lookbehind mantienen el coste lineal.
 

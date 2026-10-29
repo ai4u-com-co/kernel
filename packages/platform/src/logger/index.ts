@@ -96,6 +96,12 @@ const RE_JWT = /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za
 const RE_KEYS =
   /(?<![A-Za-z0-9_-])(?:sk-[A-Za-z0-9_-]{8,}|sb_(?:secret|publishable)_[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g
 
+// Correos (PII, no un secreto): se oculta la parte local y se conserva el dominio.
+// Lookbehind + cotas por parte mantienen el coste lineal; la salida `[correo]@dominio`
+// no vuelve a coincidir (`]` no es parte de la parte local) => idempotente.
+const RE_EMAIL =
+  /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,7}\.[A-Za-z]{2,24}/g
+
 /** Enmascara claves, tokens y parámetros sensibles dentro de un texto. Pura, idempotente, nunca lanza. */
 export function redactSecrets(text: string): string {
   try {
@@ -107,6 +113,7 @@ export function redactSecrets(text: string): string {
       .replace(RE_BASIC, "Basic [redacted]")
       .replace(RE_JWT, "[jwt]")
       .replace(RE_KEYS, "[redacted]")
+      .replace(RE_EMAIL, (m) => "[correo]" + m.slice(m.indexOf("@")))
   } catch {
     return text
   }
