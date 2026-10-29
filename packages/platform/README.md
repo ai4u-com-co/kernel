@@ -28,7 +28,7 @@ const log = getLogger("mi-componente")
 log.info({ requestId, tenant }, "algo pasó")
 // `log.error({ err }, ...)`: serializeErr enmascara claves y tokens en message y stack
 // (?key=, ?token=, Bearer/Basic, JWT, sk-…/AIza…/ghp_…, user:clave@host). Mantiene el resto
-// de la URL. message se recorta a 16 384 caracteres y stack a 32 768 (…[truncado]). También exportada como `redactSecrets(text)` por si necesitas sanear a mano.
+// de la URL. los tokens se enmascaran completos (sin límite por token); tras redactar, message se recorta a 16 384 caracteres y stack a 32 768 (…[truncado]). También exportada como `redactSecrets(text)` por si necesitas sanear a mano.
 
 // Errores tipados y categorizados (validación / negocio / infraestructura)
 import { ValidationError, NotFoundError } from "@ai4u/platform/errors"

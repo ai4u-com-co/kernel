@@ -110,6 +110,35 @@ describe("redactSecrets", () => {
     expect(slow).toEqual([])
   })
 
+  it("tokens gigantes se enmascaran completos (sin cabeza ni cola)", () => {
+    const seg = (n: number) => "QXJZ7391".repeat(Math.ceil(n / 8)).slice(0, n)
+    const jwt = `eyJ${seg(6000)}.${seg(100)}.${seg(100)}`
+    expect(redactSecrets(`x ${jwt} y`)).toBe("x [jwt] y")
+    const sk = `sk-${seg(2000)}`
+    expect(redactSecrets(`x ${sk} y`)).toBe("x [redacted] y")
+    for (const [pre, n] of [["AIza", 2000], ["ghp_", 2000], ["github_pat_", 2000], ["sb_secret_", 2000]] as const) {
+      expect(redactSecrets(`x ${pre}${seg(n)} y`)).toBe("x [redacted] y")
+    }
+  })
+
+  it("rendimiento extra: JWT con segmentos de 10 000 y repeticiones", () => {
+    const seg = "A".repeat(10_000)
+    const cases: Record<string, string> = {
+      jwtlong: `eyJ${seg}.${seg}.${seg}`,
+      jwtdots: "eyJaaaaa.bbbbbbb".repeat(10_000),
+      eyj: "eyJ".repeat(60_000),
+    }
+    const slow: string[] = []
+    for (const [name, s] of Object.entries(cases)) {
+      const t0 = performance.now()
+      redactSecrets(s)
+      const ms = performance.now() - t0
+      console.log(`perf ${name}: ${ms.toFixed(1)} ms`)
+      if (ms >= 200) slow.push(`${name}=${ms.toFixed(0)}ms`)
+    }
+    expect(slow).toEqual([])
+  })
+
   it("nunca lanza con entradas raras", () => {
     expect(() => redactSecrets(undefined as unknown as string)).not.toThrow()
   })
@@ -141,6 +170,34 @@ describe("logger.error({ err }) enmascara secretos", () => {
     expect(rec.err.message.endsWith("…[truncado]")).toBe(true)
     expect(rec.err.stack.length).toBe(32_768 + "…[truncado]".length)
     expect(rec.err.stack.endsWith("…[truncado]")).toBe(true)
+  })
+
+  it("credencial a caballo del corte: ningún fragmento sobrevive (message y stack)", () => {
+    const secret = "QXJZ7391".repeat(5)
+    const grams = Array.from({ length: secret.length - 3 }, (_, i) => secret.slice(i, i + 4))
+    const emit = (err: Error): string => {
+      const lines: string[] = []
+      const impl = (c: unknown) => (lines.push(String(c)), true)
+      const spy = vi.spyOn(process.stderr, "write").mockImplementation(impl as never)
+      getLogger("redact").error({ err }, "corte")
+      spy.mockRestore()
+      return lines.join("")
+    }
+    for (const lead of ["Bearer ", "sk-"]) {
+      for (let d = -12; d <= 12; d++) {
+        const start = (max: number) => max - 20 + d
+        const mk = (max: number) => "a".repeat(start(max)) + " " + lead + secret + "b".repeat(max)
+        const e1 = new Error(mk(16_384))
+        const o1 = emit(e1)
+        const e2 = new Error("m")
+        e2.stack = mk(32_768)
+        const o2 = emit(e2)
+        for (const g of grams) {
+          expect(o1.includes(g), `message ${lead} d=${d} ${g}`).toBe(false)
+          expect(o2.includes(g), `stack ${lead} d=${d} ${g}`).toBe(false)
+        }
+      }
+    }
   })
 
   it("también redacta cuando err no es un Error", () => {

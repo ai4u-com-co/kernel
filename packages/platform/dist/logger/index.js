@@ -82,8 +82,8 @@ const RE_URL_CREDS = /\b([a-z][a-z0-9+.-]{1,20}:\/\/)[^\s/?#@:]+:[^\s/?#@]+@/gi;
 const RE_QUERY_PARAM = new RegExp(`([?&])(${SENSITIVE_PARAMS})=[^&\\s"'#<>]*`, "gi");
 const RE_BEARER = /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/g;
 const RE_BASIC = /\bBasic\s+(?![A-Z]?[a-z]+\b)[A-Za-z0-9+/]{8,}={0,2}/g;
-const RE_JWT = /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{0,4096}/g;
-const RE_KEYS = /(?<![A-Za-z0-9_-])(?:sk-[A-Za-z0-9_-]{8,512}|sb_(?:secret|publishable)_[A-Za-z0-9_-]{8,512}|AIza[0-9A-Za-z_-]{20,512}|ghp_[A-Za-z0-9]{20,512}|github_pat_[A-Za-z0-9_]{20,512})/g;
+const RE_JWT = /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g;
+const RE_KEYS = /(?<![A-Za-z0-9_-])(?:sk-[A-Za-z0-9_-]{8,}|sb_(?:secret|publishable)_[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g;
 /** Enmascara claves, tokens y parámetros sensibles dentro de un texto. Pura, idempotente, nunca lanza. */
 function redactSecrets(text) {
     try {
@@ -104,19 +104,27 @@ function redactSecrets(text) {
 const MAX_MESSAGE = 16384;
 const MAX_STACK = 32768;
 const TRUNCATED = "…[truncado]";
-/** Tope de entrada previo a redactar: ningún patrón puede ser cuadrático sobre textos enormes. */
-function cap(text, max) {
-    return text.length > max ? text.slice(0, max) + TRUNCATED : text;
+/** Holgura sobre el tope: una credencial a caballo del corte se redacta completa antes de recortar. */
+const REDACT_SLACK = 4096;
+/**
+ * Redacta primero una porción algo mayor que el tope (el coste sigue acotado porque la
+ * entrada lo está) y DESPUÉS recorta el resultado ya redactado.
+ */
+function redactAndCap(text, max) {
+    if (text.length <= max)
+        return redactSecrets(text);
+    const redacted = redactSecrets(text.slice(0, max + REDACT_SLACK));
+    return redacted.slice(0, max) + TRUNCATED;
 }
 function serializeErr(err) {
     if (err instanceof Error) {
         return {
             name: err.name,
-            message: redactSecrets(cap(err.message, MAX_MESSAGE)),
-            stack: err.stack === undefined ? undefined : redactSecrets(cap(err.stack, MAX_STACK)),
+            message: redactAndCap(err.message, MAX_MESSAGE),
+            stack: err.stack === undefined ? undefined : redactAndCap(err.stack, MAX_STACK),
         };
     }
-    return { message: redactSecrets(cap(String(err), MAX_MESSAGE)) };
+    return { message: redactAndCap(String(err), MAX_MESSAGE) };
 }
 let transport = null;
 let buffer = [];
