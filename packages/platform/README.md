@@ -26,6 +26,9 @@ Depende de `@ai4u/mc-sso` (para verificar sesiones SSO).
 import { getLogger } from "@ai4u/platform/logger"
 const log = getLogger("mi-componente")
 log.info({ requestId, tenant }, "algo pasó")
+// `log.error({ err }, ...)`: serializeErr enmascara claves y tokens en message y stack
+// (?key=, ?token=, Bearer/Basic, JWT, sk-…/AIza…/ghp_…, user:clave@host). Mantiene el resto
+// de la URL. los tokens se enmascaran completos (sin límite por token); tras redactar, message se recorta a 16 384 caracteres y stack a 32 768 (…[truncado]). También exportada como `redactSecrets(text)` por si necesitas sanear a mano.
 
 // Errores tipados y categorizados (validación / negocio / infraestructura)
 import { ValidationError, NotFoundError } from "@ai4u/platform/errors"
@@ -104,6 +107,66 @@ if (process.env.PLATFORM_INGEST_URL && process.env.INGEST_SECRET) {
 
 El transporte es **fire-and-forget en lote**: nunca bloquea ni rompe la app; si el ingest
 cae, los logs siguen en stdout. En jobs serverless (cron) llamá `await flushLogs()` al final.
+
+## Errores que no pasan por `withApiHandler` (v0.7.0)
+
+### 1. Errores de render/rutas/acciones del servidor — `@ai4u/platform/instrumentation`
+
+```ts
+// instrumentation.ts (junto a register())
+export { onRequestError } from "@ai4u/platform/instrumentation"
+```
+
+Next llama al hook cuando falla un render RSC, un route handler, una server action o el proxy.
+Registra a nivel ERROR (mensaje + stack, `digest`, `path` sin querystring, método, `routerKind`,
+`routeType`, `routePath`) y hace `await flushLogs()`. **Nunca** registra headers, cookies ni cuerpo.
+Solo corre en runtime Node; en Edge es un no-op. Requiere que `register()` haya configurado el
+transporte (ver sección anterior).
+
+### 2. Errores del navegador — `@ai4u/platform/client` + `/client-errors`
+
+```tsx
+// components/ClientErrors.tsx  ("use client"), montado una vez en app/layout.tsx
+useEffect(() => { installClientErrorReporter({ service: "mi-app" }) }, [])
+
+// app/error.tsx y app/global-error.tsx ("use client")
+useEffect(() => { reportClientError(error, { digest: error.digest ?? "" }) }, [error])
+```
+
+```ts
+// app/api/client-error/route.ts
+import { createClientErrorHandler } from "@ai4u/platform/client-errors"
+export const POST = createClientErrorHandler()   // { maxBytes = 8192, maxPerMinute = 20 }
+```
+
+- Cliente: escucha `error` y `unhandledrejection` (con `addEventListener`, sin pisar un
+  `window.onerror` existente); idempotente; deduplica la misma firma durante 60 s; máximo 5
+  reportes por carga de página; `sendBeacon` con fallback a `fetch keepalive`; trunca mensaje (2 000)
+  y stack (4 000); solo envía `location.pathname`. Ignora errores de carga de recursos,
+  `Script error.` y `ResizeObserver loop`.
+- Servidor: acepta solo `application/json` (415), tope de tamaño (413), mismo origen por
+  `Sec-Fetch-Site`/`Origin` (403), límite por IP (429), forma validada (400); responde 204 sin eco.
+  Registra `level=ERROR`, `component="client"`, `category="client"`.
+- **Riesgo (endpoint sin autenticación):** cualquiera puede intentar enviar basura a
+  `platform_logs`. Mitigaciones: las anteriores + saneado/truncado de campos. El límite por IP vive
+  en memoria de cada instancia (mejor esfuerzo en serverless; se reinicia en cold start) y las
+  cabeceras de origen las puede falsificar un cliente que no sea navegador: para protección real
+  añade el rate-limit/WAF de la plataforma. Los campos del cliente son **datos no confiables**:
+  se registran como datos y nunca fijan nivel, servicio ni component.
+- Si la app tiene proxy/middleware con auth, deja pública `/api/client-error`.
+
+### 3. Crons y trabajos en segundo plano — `@ai4u/platform/jobs`
+
+```ts
+import { runJob } from "@ai4u/platform/jobs"
+export const GET = async () =>
+  Response.json(await runJob("sync-clientes", async (log) => syncClientes(log)))
+// runJob(name, fn, { log?, rethrow = true, tenant? })
+```
+
+Registra inicio/fin con duración; si `fn` lanza, `log.error({ err, job })` y relanza (o devuelve
+`undefined` con `rethrow: false`); si el resultado trae `errors`/`errores` > 0 (número o array)
+registra `log.error` con el resumen sin cambiar lo devuelto; siempre `await flushLogs()` al final.
 
 ## Adopción por app
 

@@ -1,5 +1,29 @@
 # Changelog — @ai4u/platform
 
+## 0.7.0 — 2026-10-28
+
+### Añadido
+- `@ai4u/platform/instrumentation`: `onRequestError(err, request, context)` para
+  `export { onRequestError } from ...` en `instrumentation.ts`. Registra errores de render,
+  rutas, acciones y proxy de Next (ERROR + flush) sin headers/cookies/cuerpo/querystring.
+  No-op en Edge.
+- `@ai4u/platform/client`: `installClientErrorReporter` y `reportClientError` (errores del
+  navegador: dedupe 60 s, 5 por sesión, sendBeacon/fetch keepalive, solo pathname).
+- `@ai4u/platform/client-errors`: `createClientErrorHandler` (POST sin auth: JSON, tope de
+  tamaño, mismo origen, límite por IP en memoria, saneado; responde 204).
+- `@ai4u/platform/jobs`: `runJob(name, fn, { log?, rethrow?, tenant? })` para crons.
+
+### Corregido
+- `@ai4u/platform/logger`: `serializeErr` enmascara claves y tokens en `message` y `stack`
+  (query `?key=`/`token=`/`signature=`…, `Bearer`/`Basic`, JWT, claves `sk-…`/`AIza…`/`ghp_…`/
+  `sb_secret_…`, credenciales `user:clave@` en URL). Nueva función pura `redactSecrets(text)`.
+  Los tokens se enmascaran completos (sin límite de longitud por token). Se redacta primero
+  y luego se recorta: `message` a 16 384 caracteres y `stack` a 32 768 (`…[truncado]`);
+  entrada acotada y regex ancladas con lookbehind mantienen el coste lineal.
+
+### Sin cambios
+- `withApiHandler`, `getLogger`, `configureTransport` y el resto de la API existente.
+
 ## 0.6.2 — 2026-09-30
 
 ### Corregido
