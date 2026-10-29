@@ -79,6 +79,37 @@ describe("redactSecrets", () => {
     }
   })
 
+  it("tiempo lineal con MUCHOS inicios de patrón (anti ReDoS cuadrático)", () => {
+    let seed = 12345
+    const b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+    let rnd = ""
+    for (let i = 0; i < 200_000; i++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff
+      rnd += b64[seed % b64.length]
+    }
+    const cases: Record<string, string> = {
+      jwt: "eyJaaaaa-".repeat(20_000),
+      aiza: "AIza".repeat(30_000),
+      ghp: "ghp_".repeat(30_000),
+      sb: "sb_secret_".repeat(20_000),
+      sk: "sk-aaaaaaaa-".repeat(15_000),
+      bearer: "Bearer aaaaaaa ".repeat(10_000),
+      basic: "Basic AAAAAAA ".repeat(10_000),
+      urlcreds: "https://a:".repeat(15_000),
+      query: "?key=&".repeat(30_000),
+      random: rnd,
+    }
+    const slow: string[] = []
+    for (const [name, s] of Object.entries(cases)) {
+      const t0 = performance.now()
+      redactSecrets(s)
+      const ms = performance.now() - t0
+      console.log(`perf ${name}: ${ms.toFixed(1)} ms`)
+      if (ms >= 200) slow.push(`${name}=${ms.toFixed(0)}ms`)
+    }
+    expect(slow).toEqual([])
+  })
+
   it("nunca lanza con entradas raras", () => {
     expect(() => redactSecrets(undefined as unknown as string)).not.toThrow()
   })
@@ -96,6 +127,20 @@ describe("logger.error({ err }) enmascara secretos", () => {
     expect(rec.err.message).toBe("request to https://api.test/x?key=[redacted]&a=1 failed")
     expect(rec.err.stack).not.toContain(FAKE_GOOGLE)
     expect(lines.join("")).not.toContain(FAKE_GOOGLE)
+  })
+
+  it("aplica el tope de longitud a message y stack", () => {
+    const lines: string[] = []
+    const impl = (c: unknown) => (lines.push(String(c)), true)
+    vi.spyOn(process.stderr, "write").mockImplementation(impl as never)
+    const err = new Error("x".repeat(1_000_000))
+    err.stack = "s".repeat(1_000_000)
+    getLogger("redact").error({ err }, "grande")
+    const rec = JSON.parse(lines.join("").trim().split("\n").pop()!)
+    expect(rec.err.message.length).toBe(16_384 + "…[truncado]".length)
+    expect(rec.err.message.endsWith("…[truncado]")).toBe(true)
+    expect(rec.err.stack.length).toBe(32_768 + "…[truncado]".length)
+    expect(rec.err.stack.endsWith("…[truncado]")).toBe(true)
   })
 
   it("también redacta cuando err no es un Error", () => {

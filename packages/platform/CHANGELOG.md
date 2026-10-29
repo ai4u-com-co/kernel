@@ -17,6 +17,8 @@
 - `@ai4u/platform/logger`: `serializeErr` enmascara claves y tokens en `message` y `stack`
   (query `?key=`/`token=`/`signature=`…, `Bearer`/`Basic`, JWT, claves `sk-…`/`AIza…`/`ghp_…`/
   `sb_secret_…`, credenciales `user:clave@` en URL). Nueva función pura `redactSecrets(text)`.
+  Antes de redactar, `message` se recorta a 16 384 caracteres y `stack` a 32 768
+  (se añade `…[truncado]`); las regex son de tiempo lineal.
 
 ### Sin cambios
 - `withApiHandler`, `getLogger`, `configureTransport` y el resto de la API existente.

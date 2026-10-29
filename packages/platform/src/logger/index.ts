@@ -92,9 +92,9 @@ const RE_URL_CREDS = /\b([a-z][a-z0-9+.-]{1,20}:\/\/)[^\s/?#@:]+:[^\s/?#@]+@/gi
 const RE_QUERY_PARAM = new RegExp(`([?&])(${SENSITIVE_PARAMS})=[^&\\s"'#<>]*`, "gi")
 const RE_BEARER = /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/g
 const RE_BASIC = /\bBasic\s+(?![A-Z]?[a-z]+\b)[A-Za-z0-9+/]{8,}={0,2}/g
-const RE_JWT = /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g
+const RE_JWT = /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{0,4096}/g
 const RE_KEYS =
-  /(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9_-]{8,}|sb_(?:secret|publishable)_[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g
+  /(?<![A-Za-z0-9_-])(?:sk-[A-Za-z0-9_-]{8,512}|sb_(?:secret|publishable)_[A-Za-z0-9_-]{8,512}|AIza[0-9A-Za-z_-]{20,512}|ghp_[A-Za-z0-9]{20,512}|github_pat_[A-Za-z0-9_]{20,512})/g
 
 /** Enmascara claves, tokens y parámetros sensibles dentro de un texto. Pura, idempotente, nunca lanza. */
 export function redactSecrets(text: string): string {
@@ -112,15 +112,23 @@ export function redactSecrets(text: string): string {
   }
 }
 
+const MAX_MESSAGE = 16_384
+const MAX_STACK = 32_768
+const TRUNCATED = "…[truncado]"
+/** Tope de entrada previo a redactar: ningún patrón puede ser cuadrático sobre textos enormes. */
+function cap(text: string, max: number): string {
+  return text.length > max ? text.slice(0, max) + TRUNCATED : text
+}
+
 function serializeErr(err: unknown): { name?: string; message: string; stack?: string } {
   if (err instanceof Error) {
     return {
       name: err.name,
-      message: redactSecrets(err.message),
-      stack: err.stack === undefined ? undefined : redactSecrets(err.stack),
+      message: redactSecrets(cap(err.message, MAX_MESSAGE)),
+      stack: err.stack === undefined ? undefined : redactSecrets(cap(err.stack, MAX_STACK)),
     }
   }
-  return { message: redactSecrets(String(err)) }
+  return { message: redactSecrets(cap(String(err), MAX_MESSAGE)) }
 }
 
 /* ── Transporte async hacia el ingest API ────────────────────────────────── */
