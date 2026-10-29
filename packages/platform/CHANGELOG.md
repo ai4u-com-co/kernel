@@ -21,7 +21,9 @@
   `[correo]`); es PII, no un secreto (errores de SMTP traen el destinatario) y es fail-closed
   (Unicode, locales largos, localhost/IP, `@` encadenados como `@a@b.com`; falsos positivos aceptados:
   `pkg@1.2.3`, `git@github.com`). Las rutas npm con scope (`/node_modules/@scope/pkg`) no se tocan;
-  un correo pegado a una ruta (`https://host/ana@x.com`) sí se enmascara.
+  un correo pegado a una ruta (`https://host/ana@x.com`) sí se enmascara. Lo que precede al
+  correo solo se conserva si la racha parece claramente una ruta (`/`, `./`, `../`, `~/`,
+  `esquema://` o `node_modules/`); en otro caso (`a/b@x.com`) toda la racha es parte local.
   La query entera de las URLs `http(s)://…?…` se enmascara (`?[redacted]`, el path se conserva) y
   los parámetros `nombre=valor` cuyo nombre TERMINA en token/key/secret/signature/sig/password/
   passwd/pass/auth/credential/session se enmascaran también fuera de URLs. Los tokens se enmascaran completos (sin límite de longitud por token). Se redacta primero

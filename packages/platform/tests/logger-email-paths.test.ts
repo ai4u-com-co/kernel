@@ -35,6 +35,20 @@ describe("correos: '@' como frontera y rutas", () => {
     expect(redactSecrets("ana@example.com/@scope/pkg")).toBe("[correo]@example.com/@scope/pkg")
   })
 
+  it("fuera de una ruta clara, la racha completa es parte local (sin fuga de 'a/')", () => {
+    expect(redactSecrets("a/b@x.com")).toBe("[correo]@x.com")
+    expect(redactSecrets("ana/perez@x.com")).toBe("[correo]@x.com")
+    expect(redactSecrets("x:a/b@x.com")).toBe("x:[correo]@x.com")
+    expect(redactSecrets("falló para ana/perez@x.com.")).toBe("falló para [correo]@x.com.")
+  })
+
+  it("prefijos de ruta claros conservan lo que precede", () => {
+    expect(redactSecrets("./dir/ana@x.com")).toBe("./dir/[correo]@x.com")
+    expect(redactSecrets("../dir/ana@x.com")).toBe("../dir/[correo]@x.com")
+    expect(redactSecrets("~/dir/ana@x.com")).toBe("~/dir/[correo]@x.com")
+    expect(redactSecrets("node_modules/pkg/ana@x.com")).toBe("node_modules/pkg/[correo]@x.com")
+  })
+
   it("'@' suelto (menciones) no cambia, e idempotencia", () => {
     expect(redactSecrets("hola @user y @ solo")).toBe("hola @user y @ solo")
     for (const s of [

@@ -119,9 +119,16 @@ function maskDomain(domain) {
     const tail = head.slice(cut) + rest;
     return RE_ASCII_DOMAIN.test(core) ? "[correo]@" + core + tail : "[correo]" + tail;
 }
+/** La racha parece claramente una ruta/URL: solo entonces se conserva lo que precede al correo. */
+const RE_URL_SCHEME_START = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//;
+function looksLikePath(m) {
+    return (m.startsWith("/") || m.startsWith("./") || m.startsWith("../") || m.startsWith("~/") ||
+        RE_URL_SCHEME_START.test(m) || m.includes("node_modules/"));
+}
 /** Recorre la racha de derecha a izquierda (iterativo, lineal): cada `@` es scope npm o correo. */
 function maskEmail(m) {
     const parts = [];
+    const pathLike = looksLikePath(m);
     let end = m.length;
     while (end > 0) {
         const at = m.lastIndexOf("@", end - 1);
@@ -132,7 +139,8 @@ function maskEmail(m) {
             end = at;
             continue;
         }
-        const localStart = m.lastIndexOf("/", at - 1) + 1;
+        // Fuera de una ruta clara, `a/b@x.com` es un correo: toda la racha previa es parte local.
+        const localStart = pathLike ? m.lastIndexOf("/", at - 1) + 1 : 0;
         if (localStart >= at) {
             // Sin parte local (p. ej. `x/@dominio` o `@` inicial): no hay nada que ocultar.
             parts.push(m.slice(at, end));
