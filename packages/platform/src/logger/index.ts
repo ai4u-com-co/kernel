@@ -100,24 +100,61 @@ const RE_JWT = /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za
 const RE_KEYS =
   /(?<![A-Za-z0-9_-])(?:sk-[A-Za-z0-9_-]{8,}|sb_(?:secret|publishable)_[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g
 
-// Correos (PII, no un secreto). FAIL-CLOSED: cualquier `algo@algo` delimitado por espacios o
-// signos de puntuación se enmascara (Unicode, locales largos, IDN, localhost, IP). El dominio se
-// conserva SOLO si parece un dominio ASCII normal; si no, queda `[correo]`. Lookbehind: solo
-// arranca al inicio de una racha => coste lineal. `[correo]@x` no vuelve a coincidir (`[`/`]`
-// son delimitadores y no hay parte local) => idempotente.
-const RE_EMAIL =
-  /(?<![^\s<>"'(),;:\[\]{}])[^\s@<>"'(),;:\[\]{}]+@[^\s@<>"'(),;:\[\]{}]+/gu
+// Correos (PII, no un secreto). FAIL-CLOSED: toda racha delimitada por espacios o puntuación que
+// contenga `algo@algo` se enmascara (Unicode, locales largos, IDN, localhost, IP, `@` encadenados).
+// La racha puede contener varias `@`: la última separa el dominio y TODO lo anterior (hasta la
+// última `/`) es parte local. El dominio se conserva SOLO si parece un dominio ASCII normal.
+// El lookbehind hace que solo arranque al inicio de una racha => coste lineal. La salida
+// `[correo]@x` no vuelve a coincidir (`[`/`]` son delimitadores y no hay parte local) => idempotente.
+const RE_EMAIL = /(?<![^\s<>"'(),;:\[\]{}])[^\s<>"'(),;:\[\]{}]+@[^\s@<>"'(),;:\[\]{}]+/gu
 const RE_ASCII_DOMAIN =
   /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?){0,8}$/
 
+/** `@scope/pkg` de una ruta npm (no un correo): `@` al inicio o tras `/`, etiqueta sin punto y `/nombre`. */
+function isNpmScope(m: string, at: number, end: number): boolean {
+  if (at !== 0 && m.charAt(at - 1) !== "/") return false
+  const slash = m.indexOf("/", at + 1)
+  if (slash <= at + 1 || slash + 1 >= end) return false
+  if (m.slice(at + 1, slash).includes(".")) return false
+  const c = m.charAt(slash + 1)
+  return c !== "/" && c !== "@"
+}
+
+function maskDomain(domain: string): string {
+  const slash = domain.indexOf("/")
+  const head = slash < 0 ? domain : domain.slice(0, slash)
+  const rest = slash < 0 ? "" : domain.slice(slash)
+  let cut = head.length
+  while (cut > 0 && ".!?*_-".includes(head.charAt(cut - 1))) cut--
+  const core = head.slice(0, cut)
+  const tail = head.slice(cut) + rest
+  return RE_ASCII_DOMAIN.test(core) ? "[correo]@" + core + tail : "[correo]" + tail
+}
+
+/** Recorre la racha de derecha a izquierda (iterativo, lineal): cada `@` es scope npm o correo. */
 function maskEmail(m: string): string {
-  const at = m.indexOf("@")
-  // `/node_modules/@scope/pkg` no es un correo: conserva las rutas de los stacks.
-  if (m.charAt(at - 1) === "/") return m
+  const parts: string[] = []
   let end = m.length
-  while (end > at + 1 && ".!?*_-".includes(m.charAt(end - 1))) end--
-  const domain = m.slice(at + 1, end)
-  return RE_ASCII_DOMAIN.test(domain) ? "[correo]@" + domain + m.slice(end) : "[correo]" + m.slice(end)
+  while (end > 0) {
+    const at = m.lastIndexOf("@", end - 1)
+    if (at < 0) break
+    if (isNpmScope(m, at, end)) {
+      parts.push(m.slice(at, end))
+      end = at
+      continue
+    }
+    const localStart = m.lastIndexOf("/", at - 1) + 1
+    if (localStart >= at) {
+      // Sin parte local (p. ej. `x/@dominio` o `@` inicial): no hay nada que ocultar.
+      parts.push(m.slice(at, end))
+      end = at
+      continue
+    }
+    parts.push(maskDomain(m.slice(at + 1, end)))
+    end = localStart
+  }
+  parts.push(m.slice(0, end))
+  return parts.reverse().join("")
 }
 
 /** Enmascara claves, tokens y parámetros sensibles dentro de un texto. Pura, idempotente, nunca lanza. */
