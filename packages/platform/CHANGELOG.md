@@ -1,5 +1,21 @@
 # Changelog — @ai4u/platform
 
+## 0.7.0 — 2026-10-28
+
+### Añadido
+- `@ai4u/platform/instrumentation`: `onRequestError(err, request, context)` para
+  `export { onRequestError } from ...` en `instrumentation.ts`. Registra errores de render,
+  rutas, acciones y proxy de Next (ERROR + flush) sin headers/cookies/cuerpo/querystring.
+  No-op en Edge.
+- `@ai4u/platform/client`: `installClientErrorReporter` y `reportClientError` (errores del
+  navegador: dedupe 60 s, 5 por sesión, sendBeacon/fetch keepalive, solo pathname).
+- `@ai4u/platform/client-errors`: `createClientErrorHandler` (POST sin auth: JSON, tope de
+  tamaño, mismo origen, límite por IP en memoria, saneado; responde 204).
+- `@ai4u/platform/jobs`: `runJob(name, fn, { log?, rethrow?, tenant? })` para crons.
+
+### Sin cambios
+- `withApiHandler`, `getLogger`, `configureTransport` y el resto de la API existente.
+
 ## 0.6.2 — 2026-09-30
 
 ### Corregido
