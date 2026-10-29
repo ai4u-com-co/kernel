@@ -12,7 +12,11 @@ afterEach(() => vi.restoreAllMocks())
 describe("redactSecrets", () => {
   it("enmascara parámetros de query sensibles conservando el nombre", () => {
     const url = "https://x.test/v1/a?foo=1&key=FAKE123&Api_Key=FAKE456#h"
-    expect(redactSecrets(url)).toBe("https://x.test/v1/a?foo=1&key=[redacted]&Api_Key=[redacted]#h")
+    // En una URL completa se enmascara la query entera (el path se conserva).
+    expect(redactSecrets(url)).toBe("https://x.test/v1/a?[redacted]#h")
+    expect(redactSecrets("GET /p?foo=1&key=FAKE123&Api_Key=FAKE456#h")).toBe(
+      "GET /p?foo=1&key=[redacted]&Api_Key=[redacted]#h",
+    )
     for (const n of [
       "key", "api_key", "apikey", "access_token", "id_token", "refresh_token", "token",
       "signature", "sig", "secret", "client_secret", "password", "x-amz-signature",
@@ -22,8 +26,10 @@ describe("redactSecrets", () => {
     }
   })
 
-  it("no toca parámetros no sensibles", () => {
-    expect(redactSecrets("GET /p?monkey=1&keyboard=2&q=token")).toBe("GET /p?monkey=1&keyboard=2&q=token")
+  it("no toca parámetros cuyo nombre no termina en una palabra sensible", () => {
+    expect(redactSecrets("GET /p?keyboard=2&q=token&page=3")).toBe("GET /p?keyboard=2&q=token&page=3")
+    // Falso positivo conocido y aceptado (sufijo "key"): prioriza no filtrar.
+    expect(redactSecrets("GET /p?monkey=1")).toBe("GET /p?monkey=[redacted]")
   })
 
   it("enmascara Bearer y Basic", () => {
@@ -55,7 +61,7 @@ describe("redactSecrets", () => {
   })
 
   it("deja IDÉNTICO el texto sin secretos", () => {
-    const s = "request to https://api.test/v1/items?id=5&page=2 failed, reason: ECONNRESET\n    at fetch (node:internal:1:1)"
+    const s = "request to https://api.test/v1/items failed, reason: ECONNRESET\n    at fetch (node:internal:1:1)"
     expect(redactSecrets(s)).toBe(s)
     expect(redactSecrets("")).toBe("")
   })
@@ -153,7 +159,7 @@ describe("logger.error({ err }) enmascara secretos", () => {
     const err = new Error(`request to https://api.test/x?key=${FAKE_GOOGLE}&a=1 failed`)
     getLogger("redact").error({ err }, "falló")
     const rec = JSON.parse(lines.join("").trim().split("\n").pop()!)
-    expect(rec.err.message).toBe("request to https://api.test/x?key=[redacted]&a=1 failed")
+    expect(rec.err.message).toBe("request to https://api.test/x?[redacted] failed")
     expect(rec.err.stack).not.toContain(FAKE_GOOGLE)
     expect(lines.join("")).not.toContain(FAKE_GOOGLE)
   })
