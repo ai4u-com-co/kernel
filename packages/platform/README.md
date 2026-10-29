@@ -26,6 +26,9 @@ Depende de `@ai4u/mc-sso` (para verificar sesiones SSO).
 import { getLogger } from "@ai4u/platform/logger"
 const log = getLogger("mi-componente")
 log.info({ requestId, tenant }, "algo pasó")
+// `log.error({ err }, ...)`: serializeErr enmascara claves y tokens en message y stack
+// (?key=, ?token=, Bearer/Basic, JWT, sk-…/AIza…/ghp_…, user:clave@host). Mantiene el resto
+// de la URL. También exportada como `redactSecrets(text)` por si necesitas sanear a mano.
 
 // Errores tipados y categorizados (validación / negocio / infraestructura)
 import { ValidationError, NotFoundError } from "@ai4u/platform/errors"

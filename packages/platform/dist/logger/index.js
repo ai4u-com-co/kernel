@@ -5,6 +5,7 @@ exports.runWithContext = runWithContext;
 exports.setContextFields = setContextFields;
 exports.getContext = getContext;
 exports.setServiceName = setServiceName;
+exports.redactSecrets = redactSecrets;
 exports.configureTransport = configureTransport;
 exports.flushLogs = flushLogs;
 exports.getLogger = getLogger;
@@ -70,10 +71,45 @@ function sanitize(fields) {
     }
     return out;
 }
+/*
+ * Secretos que viajan DENTRO de textos de error (p. ej. googleapis pone `?key=AIza…`
+ * en la URL del mensaje; node-fetch dice `request to <url> failed`). Se enmascara solo
+ * lo sensible, no la URL entera. Todas las regex son lineales (sin cuantificadores
+ * anidados) y el resultado es idempotente.
+ */
+const SENSITIVE_PARAMS = "x-amz-signature|x-goog-signature|client_secret|refresh_token|access_token|id_token|api_key|apikey|password|signature|secret|token|key|sig";
+const RE_URL_CREDS = /\b([a-z][a-z0-9+.-]{1,20}:\/\/)[^\s/?#@:]+:[^\s/?#@]+@/gi;
+const RE_QUERY_PARAM = new RegExp(`([?&])(${SENSITIVE_PARAMS})=[^&\\s"'#<>]*`, "gi");
+const RE_BEARER = /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/g;
+const RE_BASIC = /\bBasic\s+(?![A-Z]?[a-z]+\b)[A-Za-z0-9+/]{8,}={0,2}/g;
+const RE_JWT = /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g;
+const RE_KEYS = /(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9_-]{8,}|sb_(?:secret|publishable)_[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g;
+/** Enmascara claves, tokens y parámetros sensibles dentro de un texto. Pura, idempotente, nunca lanza. */
+function redactSecrets(text) {
+    try {
+        if (typeof text !== "string" || text === "")
+            return text;
+        return text
+            .replace(RE_URL_CREDS, "$1[redacted]@")
+            .replace(RE_QUERY_PARAM, "$1$2=[redacted]")
+            .replace(RE_BEARER, "Bearer [redacted]")
+            .replace(RE_BASIC, "Basic [redacted]")
+            .replace(RE_JWT, "[jwt]")
+            .replace(RE_KEYS, "[redacted]");
+    }
+    catch {
+        return text;
+    }
+}
 function serializeErr(err) {
-    if (err instanceof Error)
-        return { name: err.name, message: err.message, stack: err.stack };
-    return { message: String(err) };
+    if (err instanceof Error) {
+        return {
+            name: err.name,
+            message: redactSecrets(err.message),
+            stack: err.stack === undefined ? undefined : redactSecrets(err.stack),
+        };
+    }
+    return { message: redactSecrets(String(err)) };
 }
 let transport = null;
 let buffer = [];

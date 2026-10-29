@@ -13,6 +13,11 @@
   tamaño, mismo origen, límite por IP en memoria, saneado; responde 204).
 - `@ai4u/platform/jobs`: `runJob(name, fn, { log?, rethrow?, tenant? })` para crons.
 
+### Corregido
+- `@ai4u/platform/logger`: `serializeErr` enmascara claves y tokens en `message` y `stack`
+  (query `?key=`/`token=`/`signature=`…, `Bearer`/`Basic`, JWT, claves `sk-…`/`AIza…`/`ghp_…`/
+  `sb_secret_…`, credenciales `user:clave@` en URL). Nueva función pura `redactSecrets(text)`.
+
 ### Sin cambios
 - `withApiHandler`, `getLogger`, `configureTransport` y el resto de la API existente.
 
