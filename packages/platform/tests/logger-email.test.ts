@@ -26,7 +26,7 @@ describe("redactSecrets: correos (PII)", () => {
   })
 
   it("deja IDÉNTICO el texto sin correos", () => {
-    const s = "request to https://api.test/v1 failed @ 10:00 /node_modules/@scope/pkg/index.js user@localhost"
+    const s = "request to https://api.test/v1 failed @ 10:00 /node_modules/@scope/pkg/index.js"
     expect(redactSecrets(s)).toBe(s)
   })
 

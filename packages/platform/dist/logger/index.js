@@ -77,17 +77,35 @@ function sanitize(fields) {
  * lo sensible, no la URL entera. Todas las regex son lineales (sin cuantificadores
  * anidados) y el resultado es idempotente.
  */
-const SENSITIVE_PARAMS = "x-amz-signature|x-goog-signature|client_secret|refresh_token|access_token|id_token|api_key|apikey|password|signature|secret|token|key|sig";
+// Query de URL completa: se conserva el path para diagnosticar, nunca los valores. Host/path
+// acotados (2048) y sin cruzar otro "http(s)://" para que los inicios repetidos no sean cuadráticos.
+const RE_URL_QUERY = /(\bhttps?:\/\/(?:(?!https?:\/\/)[^\s?#"'<>]){0,2048})\?[^\s#"'<>)]*/gi;
 const RE_URL_CREDS = /\b([a-z][a-z0-9+.-]{1,20}:\/\/)[^\s/?#@:]+:[^\s/?#@]+@/gi;
-const RE_QUERY_PARAM = new RegExp(`([?&])(${SENSITIVE_PARAMS})=[^&\\s"'#<>]*`, "gi");
+// Parámetro `nombre=valor` cuyo nombre TERMINA en una palabra sensible (auth_token, private_key,
+// x-amz-signature, session…), dentro o fuera de URLs. El lookbehind evita arrancar a mitad de racha.
+const RE_SENSITIVE_PARAM = /(?<![\w.-])([\w.-]*(?:token|key|secret|signature|sig|password|passwd|pass|auth|credential|session))=[^&\s"'#<>]*/gi;
 const RE_BEARER = /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/g;
 const RE_BASIC = /\bBasic\s+(?![A-Z]?[a-z]+\b)[A-Za-z0-9+/]{8,}={0,2}/g;
 const RE_JWT = /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g;
 const RE_KEYS = /(?<![A-Za-z0-9_-])(?:sk-[A-Za-z0-9_-]{8,}|sb_(?:secret|publishable)_[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g;
-// Correos (PII, no un secreto): se oculta la parte local y se conserva el dominio.
-// Lookbehind + cotas por parte mantienen el coste lineal; la salida `[correo]@dominio`
-// no vuelve a coincidir (`]` no es parte de la parte local) => idempotente.
-const RE_EMAIL = /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,7}\.[A-Za-z]{2,24}/g;
+// Correos (PII, no un secreto). FAIL-CLOSED: cualquier `algo@algo` delimitado por espacios o
+// signos de puntuación se enmascara (Unicode, locales largos, IDN, localhost, IP). El dominio se
+// conserva SOLO si parece un dominio ASCII normal; si no, queda `[correo]`. Lookbehind: solo
+// arranca al inicio de una racha => coste lineal. `[correo]@x` no vuelve a coincidir (`[`/`]`
+// son delimitadores y no hay parte local) => idempotente.
+const RE_EMAIL = /(?<![^\s<>"'(),;:\[\]{}])[^\s@<>"'(),;:\[\]{}]+@[^\s@<>"'(),;:\[\]{}]+/gu;
+const RE_ASCII_DOMAIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?){0,8}$/;
+function maskEmail(m) {
+    const at = m.indexOf("@");
+    // `/node_modules/@scope/pkg` no es un correo: conserva las rutas de los stacks.
+    if (m.charAt(at - 1) === "/")
+        return m;
+    let end = m.length;
+    while (end > at + 1 && ".!?*_-".includes(m.charAt(end - 1)))
+        end--;
+    const domain = m.slice(at + 1, end);
+    return RE_ASCII_DOMAIN.test(domain) ? "[correo]@" + domain + m.slice(end) : "[correo]" + m.slice(end);
+}
 /** Enmascara claves, tokens y parámetros sensibles dentro de un texto. Pura, idempotente, nunca lanza. */
 function redactSecrets(text) {
     try {
@@ -95,12 +113,13 @@ function redactSecrets(text) {
             return text;
         return text
             .replace(RE_URL_CREDS, "$1[redacted]@")
-            .replace(RE_QUERY_PARAM, "$1$2=[redacted]")
+            .replace(RE_URL_QUERY, "$1?[redacted]")
+            .replace(RE_SENSITIVE_PARAM, "$1=[redacted]")
             .replace(RE_BEARER, "Bearer [redacted]")
             .replace(RE_BASIC, "Basic [redacted]")
             .replace(RE_JWT, "[jwt]")
             .replace(RE_KEYS, "[redacted]")
-            .replace(RE_EMAIL, (m) => "[correo]" + m.slice(m.indexOf("@")));
+            .replace(RE_EMAIL, maskEmail);
     }
     catch {
         return text;
