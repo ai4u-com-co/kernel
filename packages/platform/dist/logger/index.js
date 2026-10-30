@@ -64,17 +64,25 @@ function resolveServiceName() {
     return process.env.PLATFORM_SERVICE ?? process.env.SERVICE_ID ?? SERVICE_NAME;
 }
 /* ── Redacción de secretos (red de seguridad de sap-b1-backend) ──────────── */
-/** `pass` solo como palabra (`pass`, `db_pass`, `userPass`), no dentro de `bypass`/`compass`. */
-const PASS_WORD = /(?:^|[^A-Za-z])pass(?![a-z])|[a-z]Pass(?![a-z])/;
-/** Métricas de conteo de tokens de LLM (`max_tokens`, `inputTokens`, `tokens_used`): no son credenciales. */
-const TOKEN_COUNT = /tokens/i;
-const TOKEN_SECRET_PLURAL = /(?:access|auth|refresh|api|bearer|session|csrf|id|secret)[-_]?tokens/i;
+/** Palabras que contienen "pass" pero no son credenciales (comparación por segmento completo). */
+const PASS_SAFE_WORDS = new Set(["bypass", "compass", "passenger", "passive", "passthrough", "passed", "passing"]);
+/** Métricas de conteo de tokens de LLM (únicas claves con "token" que no se enmascaran). */
+const TOKEN_COUNT_KEY = /^(?:(?:max|min|input|output|prompt|completion|total|cached|reasoning)[-_]?tokens|tokens[-_]?(?:used|count|in|out|limit|remaining))$/i;
+/**
+ * FAIL-CLOSED: se enmascara toda clave que contenga password/passwd/secret/api key/authorization/cookie/
+ * credential/pass/token, salvo (a) segmentos de una lista explícita de palabras seguras con "pass" y
+ * (b) un patrón explícito de conteo de tokens (maxTokens, inputTokens, tokens_used…).
+ */
 function isSensitiveKey(k) {
     if (/password|passwd|secret|api[-_]?key|authorization|cookie|credential/i.test(k))
         return true;
-    if (/token/i.test(k))
-        return !(TOKEN_COUNT.test(k) && !TOKEN_SECRET_PLURAL.test(k));
-    return PASS_WORD.test(k);
+    const norm = k.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+    if (norm.includes("token"))
+        return !TOKEN_COUNT_KEY.test(norm);
+    if (norm.includes("pass")) {
+        return norm.split(/[^a-z0-9]+/).some((seg) => seg.includes("pass") && !PASS_SAFE_WORDS.has(seg));
+    }
+    return false;
 }
 function sanitize(fields) {
     // Un fallo de observabilidad nunca debe lanzar (Proxy / getter hostil, estructuras raras).

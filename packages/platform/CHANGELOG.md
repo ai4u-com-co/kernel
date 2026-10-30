@@ -26,8 +26,10 @@ Seguridad y robustez (auditoría de 0.7.0). Compatible salvo lo listado en "Camb
   request ya no se pueden pisar con extras (si no hay contexto, el extra sigue valiendo); cada línea lleva
   `platformVersion`. Los extras tienen tope (100 claves/elementos, profundidad 4), `Buffer`/typed arrays se
   resumen (`[Buffer n bytes]`), `sanitize` nunca lanza (fallback `{_sanitizeFailed:true}`), y las claves de
-  conteo de tokens (`max_tokens`, `inputTokens`, `tokens_used`) y `bypass` ya no se enmascaran (`token`,
-  `access_token`, `apiToken`, `password`, `pass`… sí).
+  conteo de tokens (patrón explícito: `max|min|input|output|prompt|completion|total|cached|reasoning` + `tokens`, o
+  `tokens_used|count|in|out|limit|remaining`, también en camelCase) y las palabras `bypass`, `compass`, `passenger`,
+  `passive`, `passthrough`, `passed`, `passing` no se enmascaran; toda otra clave con `token` o `pass`
+  (`secretTokens`, `my_tokens`, `dbpass`, `userpass`, `pass_word`…) sí (fail-closed).
 - **client-errors**: un `service` fuera de `/^[A-Za-z0-9._-]{1,80}$/` se registra como `unknown-client` y un `path`
   con caracteres no seguros se neutraliza (`_`; sin `/` inicial => `/invalid`); el reporte NO se descarta
   (los pathnames que el navegador produce, como `/a|b` o `/x[1]`, se conservan). Cuerpo sin `content-length` por encima de `maxBytes` => 413 sin

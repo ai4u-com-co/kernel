@@ -111,3 +111,24 @@ describe("M6 circuit breaker del flush", () => {
     expect(f).toHaveBeenCalledTimes(4)
   })
 })
+
+describe("B1 fail-closed: claves pass* y *token*", () => {
+  const MASKED = ["password", "Password", "PASSWORD", "passwd", "pass", "userPass", "userpass", "PASS", "db_pass", "dbpass", "pass_word", "x-pass",
+    "token", "tokens", "accessToken", "refresh_token", "secretTokens", "accessTokensList", "my_tokens", "authTokens", "apiToken", "csrfToken", "idToken"]
+  const KEPT = ["bypass", "compass", "passenger", "passive", "passthrough", "max_tokens", "inputTokens", "tokens_used", "completionTokens",
+    "maxTokens", "tokensUsed", "total_tokens", "cached_tokens", "reasoning_tokens", "tokens_remaining"]
+
+  it("se enmascaran las claves sensibles", async () => {
+    const { getLogger } = await fresh()
+    getLogger("c").info({ n: Object.fromEntries(MASKED.map((k) => [k, "valor"])) }, "m")
+    const n = records()[0].n
+    for (const k of MASKED) expect(n[k], k).toBe("[REDACTED]")
+  })
+
+  it("se conservan las palabras seguras y los conteos de tokens", async () => {
+    const { getLogger } = await fresh()
+    getLogger("c").info({ n: Object.fromEntries(KEPT.map((k) => [k, 7])) }, "m")
+    const n = records()[0].n
+    for (const k of KEPT) expect(n[k], k).toBe(7)
+  })
+})
