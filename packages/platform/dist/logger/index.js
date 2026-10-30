@@ -26,6 +26,7 @@ exports.newRequestId = newRequestId;
  */
 const node_async_hooks_1 = require("node:async_hooks");
 const node_crypto_1 = require("node:crypto");
+const version_1 = require("../version");
 const LEVEL_VALUES = { DEBUG: 10, INFO: 20, WARN: 30, ERROR: 40 };
 // Se leen dinámicamente del entorno para ser configurables (y testeables) sin
 // reimportar el módulo.
@@ -366,6 +367,7 @@ function emit(level, component, fieldsOrMsg, msg) {
     delete safeExtra.service;
     delete safeExtra.component;
     delete safeExtra.msg;
+    delete safeExtra.platformVersion;
     for (const k of ["tenant", "userId", "requestId"]) {
         if (ctx[k] !== undefined)
             delete safeExtra[k];
@@ -375,6 +377,7 @@ function emit(level, component, fieldsOrMsg, msg) {
     const record = {
         ts: new Date().toISOString(),
         level,
+        platformVersion: version_1.PLATFORM_VERSION,
         service: resolveServiceName(),
         component,
         ...ctx,

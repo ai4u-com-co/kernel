@@ -14,6 +14,7 @@
  */
 import { AsyncLocalStorage } from "node:async_hooks"
 import { randomUUID } from "node:crypto"
+import { PLATFORM_VERSION } from "../version"
 
 export type Level = "DEBUG" | "INFO" | "WARN" | "ERROR"
 
@@ -400,6 +401,7 @@ function emit(level: Level, component: string, fieldsOrMsg: Record<string, unkno
   delete safeExtra.service
   delete safeExtra.component
   delete safeExtra.msg
+  delete safeExtra.platformVersion
   for (const k of ["tenant", "userId", "requestId"]) {
     if (ctx[k] !== undefined) delete safeExtra[k]
   }
@@ -409,6 +411,7 @@ function emit(level: Level, component: string, fieldsOrMsg: Record<string, unkno
   const record: Record<string, unknown> = {
     ts: new Date().toISOString(),
     level,
+    platformVersion: PLATFORM_VERSION,
     service: resolveServiceName(),
     component,
     ...ctx,
