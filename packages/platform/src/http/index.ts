@@ -95,13 +95,19 @@ function jsonResponse(body: unknown, status: number, requestId: string): Respons
   })
 }
 
+/** x-request-id entrante: solo charset/longitud acotados; si no, se regenera (evita inflado e inyección en logs). */
+const REQUEST_ID_RE = /^[A-Za-z0-9._-]{1,128}$/
+function safeIncomingRequestId(v: string | null): string | null {
+  return v !== null && REQUEST_ID_RE.test(v) ? v : null
+}
+
 export function withApiHandler<R extends object = object>(
   handler: RouteHandler<R>,
   options: WithApiHandlerOptions = {},
 ): (req: Request, routeCtx?: R) => Promise<Response> {
   const label = options.label ?? "api"
   return async (req: Request, routeCtx?: R): Promise<Response> => {
-    const requestId = req.headers.get("x-request-id") ?? newRequestId()
+    const requestId = safeIncomingRequestId(req.headers.get("x-request-id")) ?? newRequestId()
     const log = getLogger(label)
 
     return runWithContext({ requestId }, async () => {

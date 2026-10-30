@@ -58,10 +58,15 @@ function jsonResponse(body, status, requestId) {
         headers: { "content-type": "application/json", "x-request-id": requestId },
     });
 }
+/** x-request-id entrante: solo charset/longitud acotados; si no, se regenera (evita inflado e inyección en logs). */
+const REQUEST_ID_RE = /^[A-Za-z0-9._-]{1,128}$/;
+function safeIncomingRequestId(v) {
+    return v !== null && REQUEST_ID_RE.test(v) ? v : null;
+}
 function withApiHandler(handler, options = {}) {
     const label = options.label ?? "api";
     return async (req, routeCtx) => {
-        const requestId = req.headers.get("x-request-id") ?? (0, logger_1.newRequestId)();
+        const requestId = safeIncomingRequestId(req.headers.get("x-request-id")) ?? (0, logger_1.newRequestId)();
         const log = (0, logger_1.getLogger)(label);
         return (0, logger_1.runWithContext)({ requestId }, async () => {
             const start = Date.now();
