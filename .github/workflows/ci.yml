@@ -35,6 +35,9 @@ jobs:
       - name: Build (todos los paquetes)
         run: npm run build
 
+      - name: Verificar que design-system no bundlea MUI/Emotion/React
+        run: npm run verify-externals --workspace=packages/design-system
+
       - name: Verificar que dist/ de cada paquete coincide con el build fresco
         run: |
           if ! git diff --quiet -- packages/*/dist; then

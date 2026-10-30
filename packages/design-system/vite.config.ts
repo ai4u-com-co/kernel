@@ -33,14 +33,17 @@ export default defineConfig(({ command }) => {
             format === 'es' ? `${entryName}.js` : `${entryName}.cjs`,
         },
         rollupOptions: {
+          // Externalizar por nombre Y por subpath (`@mui/material/styles`,
+          // `@mui/icons-material/<X>`, `@emotion/*`). Con coincidencia exacta los
+          // subpaths se bundleaban y el dist quedaba atado a la versión de MUI
+          // instalada al compilar (crash con MUI >= 9.1, ver CHANGELOG 1.4.1).
+          // Verificado en CI por scripts/verify-externals.mjs.
           external: [
+            /^@mui\//,
+            /^@emotion\//,
             'react',
             'react-dom',
             'react/jsx-runtime',
-            '@mui/material',
-            '@mui/icons-material',
-            '@emotion/react',
-            '@emotion/styled',
             'react-router-dom',
             'react-helmet-async',
           ],

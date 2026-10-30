@@ -8,11 +8,17 @@ Librería de componentes/tokens consumida por todo el ecosistema superAI vía `g
 - `npm run storybook` — catálogo visual en `:6006`
 - `npm run build` — build de la librería (genera `dist/` + copia `base.css`)
 - `npm run typecheck` — `tsc --noEmit`
+- `npm run verify-externals` — verifica que el `dist/` no bundlee MUI/Emotion/React (correr tras `build`)
 
 ## Importante al editar
 - Tras cambios, **siempre** `npm run build` — los consumidores leen `dist/`, no `src/`.
 - Componentes router-coupled (Navbar, Footer, Breadcrumb…) usan `react-router-dom` (peer opcional). Los consumidores Next.js deben pasar su propio `LinkComponent` o usar solo tokens.
-- Mantener `react-router-dom` y `react-helmet-async` en `external` de `vite.config.ts`.
+- Mantener en `external` de `vite.config.ts`: `/^@mui\//`, `/^@emotion\//`, `react`, `react-dom`,
+  `react/jsx-runtime`, `react-router-dom` y `react-helmet-async`. **Siempre por regex/prefijo, nunca solo por
+  nombre exacto**: los subpaths (`@mui/material/styles`) se bundleaban y el `dist/` quedaba atado a la versión de
+  MUI instalada al compilar (crash con MUI >= 9.1 en 1.4.0, corregido en 1.4.1).
+- `npm run verify-externals` (tras `build`; también corre en el CI raíz) falla si el `dist/` contiene código
+  de MUI/Emotion/React bundleado o imports inesperados.
 
 ## Responsive — mobile first, sin excepciones
 
