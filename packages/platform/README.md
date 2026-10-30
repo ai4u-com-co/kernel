@@ -116,7 +116,7 @@ if (process.env.PLATFORM_INGEST_URL && process.env.INGEST_SECRET) {
 
 El transporte es **fire-and-forget en lote**: nunca bloquea ni rompe la app; si el ingest
 cae, los logs siguen en stdout (0.8.0: el POST tiene timeout de 2 s, el lote fallido se reencola con tope
-de 1000 y cada línea lleva `platformVersion`). En jobs serverless (cron) llamá `await flushLogs()` al final.
+de 1000 (un timeout con ingest que sí insertó puede duplicar; circuit breaker tras 3 fallos) y cada línea lleva `platformVersion`). En jobs serverless (cron) llamá `await flushLogs()` al final.
 
 ## Errores que no pasan por `withApiHandler` (v0.7.0)
 

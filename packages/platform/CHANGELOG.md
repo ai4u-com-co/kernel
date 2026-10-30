@@ -10,30 +10,39 @@ Seguridad y robustez (auditoría de 0.7.0). Compatible salvo lo listado en "Camb
   `InfrastructureError`/`ExternalServiceError`, `AppError` con `isOperational:false`). Responden
   `{ "error": "Error interno", "code": "UNEXPECTED_ERROR" | <code>, "category", "requestId" }`; el mensaje real
   (redactado) queda solo en el log. Los 4xx y los `AppError` operacionales conservan su mensaje.
-  Antes: `{"error":"connect ECONNREFUSED 10.0.0.5:5432 password authentication failed…"}`.
+  Tampoco se envía `details` en ese caso. Antes: `{"error":"connect ECONNREFUSED 10.0.0.5:5432 password authentication failed…"}`.
   Si una app mostraba `body.error` de un 500 al usuario, ahora verá "Error interno": usa `requestId`
   para correlacionar con el log.
-- **Nivel de log de errores lanzados.** Un 4xx LANZADO (`UnauthorizedError`, `ForbiddenError`,
-  `NotFoundError`, `ValidationError`…) se loguea como `warn` (sin stack), igual que un 4xx retornado como
-  `Response`; antes era `error`. Los 5xx siguen en `error`. Los paneles/automatizaciones que filtran por
-  `level=ERROR` (p. ej. nightly fixer) verán menos ruido; los que contaban 401/403/404 por nivel ERROR
-  deben pasar a WARN.
+- **Nivel de log de errores lanzados.** Un 4xx LANZADO y operacional (`UnauthorizedError`,
+  `ForbiddenError`, `NotFoundError`, `ValidationError`…) se loguea como `warn` (sin stack), igual que un 4xx
+  retornado como `Response`; antes era `error`. **Los 401/403 lanzados pasan de ERROR a WARN**: los paneles y
+  el nightly fixer que filtren por `level=ERROR` para detectar problemas de auth dejarán de verlos y deben pasar
+  a WARN. Un `AppError` con `isOperational:false` (bug inesperado) sigue en `error` con stack aunque sea 4xx;
+  los 5xx siguen en `error`.
 - **`x-request-id` entrante** se acepta solo si cumple `/^[A-Za-z0-9._-]{1,128}$/`; si no, se genera uno
   nuevo (antes se reflejaba tal cual, hasta 5000+ caracteres).
 - **Logger**: `msg` y los extras (recursivo, profundidad 4) pasan por `redactSecrets` y las claves
   sensibles se enmascaran también en objetos anidados; `tenant`, `userId` y `requestId` del contexto de la
   request ya no se pueden pisar con extras (si no hay contexto, el extra sigue valiendo); cada línea lleva
-  `platformVersion`.
-- **client-errors**: `service` debe cumplir `/^[A-Za-z0-9._-]{1,80}$/` y `path` ser un pathname codificado que
-  empieza con `/` (si no, 400 sin registrar); cuerpo sin `content-length` por encima de `maxBytes` => 413 sin
+  `platformVersion`. Los extras tienen tope (100 claves/elementos, profundidad 4), `Buffer`/typed arrays se
+  resumen (`[Buffer n bytes]`), `sanitize` nunca lanza (fallback `{_sanitizeFailed:true}`), y las claves de
+  conteo de tokens (`max_tokens`, `inputTokens`, `tokens_used`) y `bypass` ya no se enmascaran (`token`,
+  `access_token`, `apiToken`, `password`, `pass`… sí).
+- **client-errors**: un `service` fuera de `/^[A-Za-z0-9._-]{1,80}$/` se registra como `unknown-client` y un `path`
+  con caracteres no seguros se neutraliza (`_`; sin `/` inicial => `/invalid`); el reporte NO se descarta
+  (los pathnames que el navegador produce, como `/a|b` o `/x[1]`, se conservan). Cuerpo sin `content-length` por encima de `maxBytes` => 413 sin
   leerlo entero; la clave del rate limit sale de `x-vercel-forwarded-for` / `x-real-ip` antes que de
   `x-forwarded-for`.
-- `engines.node` pasa a `>=22`.
+- `engines.node` pasa a `>=22`. **Es declarativo**: el código de platform corre en Node 20 y no se verifica
+  nada en runtime. Qué revisar antes de actualizar: proyectos con yarn v1 o pnpm con `engine-strict` (la
+  instalación fallará con Node < 22) y proyectos de Vercel que aún estén en Node 20 (deprecado el 1-oct-2026;
+  súbelos a 22).
 
 ### Añadido
 - `readIdentity(req, { serviceId?, allowedTenants?, normalizeTenant?, acceptLegacy? })` delega en
   `readMcSession` de mc-sso 1.3.0 (pin `#v1.3.0`, sin cambio en el árbol). `configureIdentity({...})` fija el
-  default de la app (las opciones por llamada lo pisan). `Identity.serviceId` expone el servicio de la sesión.
+  default de la app (las opciones por llamada lo pisan; el estado vive en `globalThis` para sobrevivir a
+  bundlers que instancian el módulo varias veces). `Identity.serviceId` expone el servicio de la sesión.
   **Opt-in**: sin opciones el comportamiento es idéntico al de 0.7.0 (no se deriva nada de `SERVICE_ID`: en
   varias apps no coincide con el `serviceId` de su handler SSO y cortaría sesiones válidas). Si hay una cookie
   de sesión y no hay `serviceId` configurado, se emite UN WARN por proceso (medir adopción).
@@ -46,7 +55,10 @@ Seguridad y robustez (auditoría de 0.7.0). Compatible salvo lo listado en "Camb
 - Logger: `fetch` al ingest con `AbortSignal.timeout(2000)` (un ingest colgado retenía la respuesta de la API
   hasta el timeout de la función); `flushLogs()` concurrente espera al envío en curso en vez de retornar con
   el buffer vacío; si el envío falla (red, timeout, 5xx/408/429) el lote se reencola con tope de 1000
-  registros (los más viejos se descartan) y los envíos automáticos esperan 5 s tras un fallo; ya no lanza
+  registros (los más viejos se descartan) y los envíos automáticos esperan 5 s tras un fallo. Tras 3 fallos
+  consecutivos, `flushLogs()` (ruta de request) también espera ese enfriamiento (circuit breaker simple).
+  **Limitación**: si el POST expira pero el ingest SÍ insertó el lote, el reenvío puede **duplicar** registros
+  (no hay idempotencia por registro). Ya no lanza
   `TypeError` al loguear un objeto con referencias circulares.
 
 ### Cómo adoptar el endurecimiento de auth
