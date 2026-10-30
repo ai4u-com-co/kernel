@@ -28,8 +28,9 @@ compartidos, no es una app ni se despliega. Repo público: no poner secretos ni 
 ## Convenciones y trampas
 - **`dist/` de cada paquete se commitea.** El CI (`ci.yml`) corre type-check, test, build y falla si
   `git diff packages/*/dist` no está limpio: tras cambiar `src/`, corre `npm run build` y commitea.
-- `design-system` usa Vite/Rollup: su `dist/` puede diferir entre entornos de build por el minificador
-  (no determinista); no es bug de código.
+- `design-system` usa Vite/Rollup. Su `dist/` solo depende del código y de las versiones de Vite/Rollup
+  (dos builds seguidos son idénticos); el desfase contra el tag `v1.4.0` era por bundlear MUI (corregido
+  en 1.4.1). `npm run verify-externals` (en el CI) falla si `@mui/*`/`@emotion/*`/React vuelven a bundlearse.
 - Los consumidores leen `dist/`, no `src/`. Un cambio de comportamiento pide: test, entrada en el
   `CHANGELOG.md` del paquete y subir `version`.
 - Hay dependencia interna `platform -> mc-sso` fijada por tag de GitHub; si subes `mc-sso`, revisa

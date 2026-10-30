@@ -1,6 +1,6 @@
 {
   "name": "@ai4u/design-system",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "AI4U Design System — tokens, components, and themes",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -31,6 +31,7 @@
   ],
   "scripts": {
     "build": "vite build && mkdir -p dist/styles && cp src/styles/*.css dist/styles/",
+    "verify-externals": "node scripts/verify-externals.mjs",
     "dev": "vite build --watch",
     "preview": "vite",
     "typecheck": "tsc --noEmit",

@@ -10,7 +10,8 @@ sea un commit, no una coordinación manual entre 4 repos.
 (leídos de los `package.json`): `platform` 36, `mc-sso` 28, `config` 35, `design-system` 34, `contracts` 4.
 El ciclo completo (tag → espejo → `bump-bot` → PR → merge → deploy) ya corrió en producción para
 `config`, `contracts`, `mc-sso` y `platform` (hasta 0.6.2). `design-system` **no** se ha publicado
-todavía desde `kernel` (su espejo `sistemaDiseno#v1.4.0` es anterior a este `dist/`).
+todavía desde `kernel` (su espejo `sistemaDiseno#v1.4.0` es anterior a este `dist/`); la 1.4.1
+(fix del crash con MUI >= 9.1, ver `packages/design-system/CHANGELOG.md`) espera su tag `design-system-v1.4.1`.
 
 El pin interno `platform → mc-sso` debe mantenerse en la última versión estable de `mc-sso`
 (hoy `#v1.3.0`); si subes `mc-sso`, súbelo en el mismo PR.
@@ -80,7 +81,7 @@ los `package.json` reales: si un repo nuevo no aparece ahí, no recibe bumps.
 | `config` | `tsc` | Byte a byte idéntico |
 | `platform` | `tsc` | Byte a byte idéntico |
 | `mc-sso` | `tsc` | Byte a byte idéntico |
-| `design-system` | Vite/Rollup | **No** idéntico al tag `v1.4.0` del espejo, con `src/` idéntico. Auditoría 30-oct-2026: la causa NO es el minificador; `vite.config.ts` solo externaliza `@mui/material` y `@mui/icons-material` por nombre exacto, así que los subpaths (`@mui/material/styles`, `@mui/icons-material/<X>`) se **bundlean** y el `dist/` depende de la versión de MUI instalada al compilar (el tag lleva `@mui/styled-engine` 9.0.0 sin `theme.motion`; el `dist/` actual, 9.1.x). Dos builds en el mismo entorno sí son idénticos. Arreglo planeado: externalizar con regex (`/^@mui\//`) y publicar versión nueva. |
+| `design-system` | Vite/Rollup | Hasta 1.4.0 **no** reproducible contra el tag `v1.4.0` del espejo, con `src/` idéntico: la causa no era el minificador sino que `vite.config.ts` externalizaba `@mui/material` y `@mui/icons-material` solo por nombre exacto, así que los subpaths (`@mui/material/styles`, `@mui/icons-material/<X>`, `@emotion/*`) se bundleaban y el `dist/` dependía de la versión de MUI instalada al compilar (el tag lleva `@mui/styled-engine` 9.0.0 sin `theme.motion` y crashea con MUI >= 9.1). **Corregido en 1.4.1**: `external` por regex (`/^@mui\//`, `/^@emotion\//`, react…) y `npm run verify-externals` en el CI. Dos builds seguidos son idénticos (verificado: 197 archivos, mismos SHA-256). |
 | `contracts` | `tsc` | Byte a byte idéntico |
 
 Los 5: historia completa preservada vía `git subtree` (`config`/`platform`/`contracts`
