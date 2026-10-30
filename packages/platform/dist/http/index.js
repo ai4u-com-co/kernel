@@ -128,8 +128,15 @@ function withApiHandler(handler, options = {}) {
                 catch (err) {
                     const durationMs = Date.now() - start;
                     const appErr = (0, errors_1.classifyUnknownError)(err);
-                    // Log con detalle completo (stack incluido); la respuesta al cliente es segura.
-                    log.error({ durationMs, status: appErr.httpStatus, code: appErr.code, err: appErr.cause ?? appErr }, `${label} error`);
+                    // 4xx lanzado (Unauthorized/NotFound/Validation…) es tráfico normal: WARN sin stack, igual que
+                    // un 4xx retornado como Response. Solo 5xx va a ERROR (lo que consumen paneles y el fixer).
+                    if (appErr.httpStatus < 500) {
+                        log.warn({ durationMs, status: appErr.httpStatus, code: appErr.code }, `${label} ${appErr.name}: ${appErr.message}`);
+                    }
+                    else {
+                        // Log con detalle completo (stack incluido); la respuesta al cliente es segura.
+                        log.error({ durationMs, status: appErr.httpStatus, code: appErr.code, err: appErr.cause ?? appErr }, `${label} error`);
+                    }
                     const { status, body } = (0, errors_1.toErrorResponse)(appErr, requestId);
                     return jsonResponse(body, status, requestId);
                 }
