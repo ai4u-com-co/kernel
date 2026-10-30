@@ -34,6 +34,7 @@
     "dev": "vite build --watch",
     "preview": "vite",
     "typecheck": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

@@ -13,7 +13,7 @@ del ecosistema; no es una app, no se despliega: se **publica como tag**.
 
 ## Stack
 - TypeScript (`tsc`), tests con `vitest`. CI usa Node 22. Dependencias: `@ai4u/mc-sso` (pin por tag
-  de GitHub) y `@vercel/oidc`. Versión actual en `package.json`: 0.6.2.
+  de GitHub) y `@vercel/oidc`. Versión actual: ver `package.json` (0.7.0).
 
 ## Comandos (de `package.json`)
 - `npm ci` — instalar
@@ -27,8 +27,9 @@ del ecosistema; no es una app, no se despliega: se **publica como tag**.
 - `src/http` — `withApiHandler` (x-request-id, logging, clasificación de errores, JSON uniforme).
 - `src/auth` — `readIdentity`, `requireModule`, `verifyServiceRequest`.
 - `src/security` (+ `edge.ts`) — `safeEqual` / `safeEqualEdge`.
+- `src/client`, `src/client-errors`, `src/instrumentation`, `src/jobs` — reporter de navegador, receptor `createClientErrorHandler`, `onRequestError`, `runJob`.
 - `src/gateway-identity` — `getGatewayIdentityHeaders` (header `x-ai4u-identity`, fail-open).
-- `tests/` — un archivo por módulo. Docs: `README.md`, `ADOPTION.md`, `CHANGELOG.md`, `GO-LIVE.md`.
+- `tests/` — un archivo por módulo. Docs: `README.md`, `ADOPTION.md`, `CHANGELOG.md`.
 
 ## Convenciones y trampas
 - **`dist/` se commitea** y los consumidores leen `dist/`, no `src/`. El CI falla si `dist/` no
@@ -53,11 +54,6 @@ servicio), `VERCEL`. Los valores los define cada app consumidora; no van en este
 ## Publicar una versión
 1. Subir `version` en `package.json`, `npm run build`, actualizar `CHANGELOG.md`.
 2. PR a `main` de `kernel` (CI: type-check, test, build, `dist/` al día).
-3. Tag `platform-vX.Y.Z` en `kernel`: el workflow publica el contenido y el tag `vX.Y.Z` en el espejo.
+3. `scripts/release.sh platform X.Y.Z` desde la raíz de `kernel` (el commit taggeado no puede llevar
+   `[skip ci]`): el workflow publica el contenido y el tag `vX.Y.Z` en el espejo.
 4. Los consumidores pinean `github:ai4u-com-co/platform#vX.Y.Z` (el bump lo automatiza `bump-bot`).
-
-## Por confirmar
-- El `README.md` aún cita `github:donchelo/platform` como origen de instalación, mientras que
-  `package.json` de contracts/kernel usan `ai4u-com-co`. Confirmar cuál es el canónico.
-- El flujo "PR en kernel + tag" refleja `mirror.yml`; el README de este repo aún describe publicar
-  directo con `git tag` sobre este repo.
