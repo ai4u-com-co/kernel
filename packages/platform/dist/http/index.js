@@ -128,9 +128,10 @@ function withApiHandler(handler, options = {}) {
                 catch (err) {
                     const durationMs = Date.now() - start;
                     const appErr = (0, errors_1.classifyUnknownError)(err);
-                    // 4xx lanzado (Unauthorized/NotFound/Validation…) es tráfico normal: WARN sin stack, igual que
-                    // un 4xx retornado como Response. Solo 5xx va a ERROR (lo que consumen paneles y el fixer).
-                    if (appErr.httpStatus < 500) {
+                    // 4xx lanzado y operacional (Unauthorized/NotFound/Validation…) es tráfico normal: WARN sin stack,
+                    // igual que un 4xx retornado como Response. Va a ERROR el 5xx y todo AppError marcado
+                    // isOperational:false (bug inesperado, ver errors/index.ts): lo que consumen paneles y el fixer.
+                    if (appErr.httpStatus < 500 && appErr.isOperational) {
                         log.warn({ durationMs, status: appErr.httpStatus, code: appErr.code }, `${label} ${appErr.name}: ${appErr.message}`);
                     }
                     else {

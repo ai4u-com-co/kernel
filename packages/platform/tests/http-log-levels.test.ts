@@ -44,4 +44,15 @@ describe("P4 nivel de log de errores LANZADOS según status", () => {
     expect(spies.error.mock.calls[0][0]).toMatchObject({ status })
     expect(spies.warn).not.toHaveBeenCalled()
   })
+
+  it("M5: un 4xx NO operacional (bug inesperado) lanzado sigue en log.error con stack", async () => {
+    const spies = spyLogger()
+    const res = await withApiHandler(async () => {
+      throw new AppError("estado imposible", "validation", { httpStatus: 400, isOperational: false })
+    })(new Request("https://x/a"))
+    expect(res.status).toBe(400)
+    expect(spies.error).toHaveBeenCalledTimes(1)
+    expect(spies.error.mock.calls[0][0]).toMatchObject({ status: 400 })
+    expect(spies.warn).not.toHaveBeenCalled()
+  })
 })
