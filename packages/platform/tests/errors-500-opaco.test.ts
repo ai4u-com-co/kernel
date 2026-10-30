@@ -67,4 +67,30 @@ describe("P1: un 500 no operacional no filtra internals al cliente", () => {
     const e = new AppError("payload inválido", "validation", { httpStatus: 422, isOperational: false })
     expect(toErrorResponse(e).body.error).toBe("payload inválido")
   })
+
+  it("M1: un error no operacional 5xx NO devuelve details (ExternalServiceError con details)", () => {
+    const e = new ExternalServiceError(LEAK, { details: { host: "10.0.0.5", sql: "select * from x" } })
+    const { body } = toErrorResponse(e, "rid")
+    expect(body.error).toBe("Error interno")
+    expect(body).not.toHaveProperty("details")
+    expect(JSON.stringify(body)).not.toContain("10.0.0.5")
+  })
+
+  it("B5: AppError 503 NO operacional oculta mensaje y details", () => {
+    const e = new AppError("pool exhausted en 10.0.0.9", "infrastructure", {
+      httpStatus: 503,
+      isOperational: false,
+      details: { pool: "x" },
+    })
+    const { status, body } = toErrorResponse(e)
+    expect(status).toBe(503)
+    expect(body.error).toBe("Error interno")
+    expect(body).not.toHaveProperty("details")
+  })
+
+  it("los details de errores operacionales (y de 4xx) se conservan", () => {
+    expect(toErrorResponse(new ValidationError("x", { details: { campo: "n" } })).body.details).toEqual({ campo: "n" })
+    const op = new AppError("mant", "infrastructure", { httpStatus: 503, isOperational: true, details: { eta: 5 } })
+    expect(toErrorResponse(op).body.details).toEqual({ eta: 5 })
+  })
 })
