@@ -64,16 +64,40 @@ function resolveServiceName() {
     return process.env.PLATFORM_SERVICE ?? process.env.SERVICE_ID ?? SERVICE_NAME;
 }
 /* ── Redacción de secretos (red de seguridad de sap-b1-backend) ──────────── */
-const SENSITIVE_KEY = /pass(word)?|secret|token|api[-_]?key|authorization|cookie|credential/i;
+/** `pass` solo como palabra (`pass`, `db_pass`, `userPass`), no dentro de `bypass`/`compass`. */
+const PASS_WORD = /(?:^|[^A-Za-z])pass(?![a-z])|[a-z]Pass(?![a-z])/;
+/** Métricas de conteo de tokens de LLM (`max_tokens`, `inputTokens`, `tokens_used`): no son credenciales. */
+const TOKEN_COUNT = /tokens/i;
+const TOKEN_SECRET_PLURAL = /(?:access|auth|refresh|api|bearer|session|csrf|id|secret)[-_]?tokens/i;
+function isSensitiveKey(k) {
+    if (/password|passwd|secret|api[-_]?key|authorization|cookie|credential/i.test(k))
+        return true;
+    if (/token/i.test(k))
+        return !(TOKEN_COUNT.test(k) && !TOKEN_SECRET_PLURAL.test(k));
+    return PASS_WORD.test(k);
+}
 function sanitize(fields) {
-    return sanitizeObject(fields, 0, new WeakSet());
+    // Un fallo de observabilidad nunca debe lanzar (Proxy / getter hostil, estructuras raras).
+    try {
+        return sanitizeObject(fields, 0, new WeakSet());
+    }
+    catch {
+        return { _sanitizeFailed: true };
+    }
 }
 /** Profundidad máxima al recorrer los extras de un log (lo más hondo se reemplaza por un marcador). */
 const MAX_EXTRA_DEPTH = 4;
+/** Tope de claves por objeto y de elementos por array en los extras. */
+const MAX_EXTRA_ITEMS = 100;
 function sanitizeObject(obj, depth, seen) {
     const out = {};
-    for (const [k, v] of Object.entries(obj)) {
-        out[k] = SENSITIVE_KEY.test(k) ? "[REDACTED]" : sanitizeValue(v, depth + 1, seen);
+    let n = 0;
+    for (const k of Object.keys(obj)) {
+        if (n++ >= MAX_EXTRA_ITEMS) {
+            out["…[truncado]"] = `+${Object.keys(obj).length - MAX_EXTRA_ITEMS} claves`;
+            break;
+        }
+        out[k] = isSensitiveKey(k) ? "[REDACTED]" : sanitizeValue(obj[k], depth + 1, seen);
     }
     return out;
 }
@@ -87,10 +111,24 @@ function sanitizeValue(v, depth, seen) {
         return v;
     if (v instanceof Error)
         return serializeErr(v);
+    // Buffer / typed arrays / DataView: se resumen, nunca se expanden por índice.
+    if (ArrayBuffer.isView(v))
+        return `[${v.constructor?.name ?? "Buffer"} ${v.byteLength} bytes]`;
+    if (v instanceof ArrayBuffer)
+        return `[ArrayBuffer ${v.byteLength} bytes]`;
     if (depth >= MAX_EXTRA_DEPTH || seen.has(v))
         return "[truncado]";
     seen.add(v);
-    const res = Array.isArray(v) ? v.map((x) => sanitizeValue(x, depth + 1, seen)) : sanitizeObject(v, depth, seen);
+    let res;
+    if (Array.isArray(v)) {
+        const items = v.slice(0, MAX_EXTRA_ITEMS).map((x) => sanitizeValue(x, depth + 1, seen));
+        if (v.length > MAX_EXTRA_ITEMS)
+            items.push(`…[truncado] +${v.length - MAX_EXTRA_ITEMS} elementos`);
+        res = items;
+    }
+    else {
+        res = sanitizeObject(v, depth, seen);
+    }
     seen.delete(v);
     return res;
 }
@@ -233,6 +271,9 @@ const FLUSH_TIMEOUT_MS = 2000;
 const FAIL_COOLDOWN_MS = 5000;
 let lastFailAt = 0;
 let lastFailed = false;
+/** Fallos consecutivos del ingest: al llegar a BREAKER_FAILS, TAMBIÉN flushLogs() espera el enfriamiento. */
+let consecutiveFails = 0;
+const BREAKER_FAILS = 3;
 /**
  * Bundlers como Turbopack pueden instanciar este módulo más de una vez dentro
  * del mismo proceso (una copia por bundle de función serverless: una para
@@ -288,17 +329,20 @@ async function send(cfg, batch) {
             if (res.status >= 500 || res.status === 408 || res.status === 429) {
                 requeue(batch);
                 lastFailed = true;
+                consecutiveFails++;
                 lastFailAt = Date.now();
                 return;
             }
         }
         lastFailed = false;
+        consecutiveFails = 0;
     }
     catch (err) {
         // El ingest cayó o tardó demasiado: el lote vuelve al buffer (con tope) y la app no se rompe.
         process.stderr.write(`[platform/logger] ingest flush failed: ${String(err)}\n`);
         requeue(batch);
         lastFailed = true;
+        consecutiveFails++;
         lastFailAt = Date.now();
     }
 }
@@ -309,6 +353,10 @@ function flush() {
     }
     const cfg = resolveTransport();
     if (!cfg || buffer.length === 0)
+        return Promise.resolve();
+    // Circuit breaker simple: con el ingest caído de forma sostenida, la ruta de request deja de pagar el
+    // timeout en cada respuesta; el lote sigue en el buffer (con tope) y se reintenta pasado el enfriamiento.
+    if (consecutiveFails >= BREAKER_FAILS && Date.now() - lastFailAt < FAIL_COOLDOWN_MS)
         return Promise.resolve();
     const batch = buffer;
     buffer = [];
@@ -349,7 +397,12 @@ function emit(level, component, fieldsOrMsg, msg) {
     }
     else {
         message = msg ?? "";
-        extra = { ...fieldsOrMsg };
+        try {
+            extra = { ...fieldsOrMsg }; // el spread ejecuta getters: un getter que lanza no debe romper el log
+        }
+        catch {
+            extra = { _sanitizeFailed: true };
+        }
     }
     const ctx = getContext();
     const errField = extra.err;
