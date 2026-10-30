@@ -12,6 +12,7 @@ const session = (tenant: string, serviceId?: string, modules?: string[] | null) 
 // Cada test carga un módulo fresco: el WARN "una vez por proceso" y configureIdentity son estado de módulo.
 async function load() {
   vi.resetModules()
+  delete (globalThis as Record<symbol, unknown>)[Symbol.for("@ai4u/platform/identity")]
   const logger = await import("../src/logger")
   const warn = vi.fn()
   vi.spyOn(logger, "getLogger").mockReturnValue({ warn, info: vi.fn(), error: vi.fn(), debug: vi.fn() } as never)
@@ -113,6 +114,7 @@ describe("P2 modo estricto de módulos (null/[] = ninguno)", () => {
 describe("P2 withApiHandler({ strictModules })", () => {
   it("con strictModules una sesión sin allowedModules => 403; sin la opción pasa (compat)", async () => {
     vi.resetModules()
+    delete (globalThis as Record<symbol, unknown>)[Symbol.for("@ai4u/platform/identity")]
     const { withApiHandler } = await import("../src/http")
     const req = () => reqWith(session("flexoimpresos", "kpis", null))
     const strict = withApiHandler(async () => ({ ok: true }), {

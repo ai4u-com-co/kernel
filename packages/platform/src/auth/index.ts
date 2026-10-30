@@ -51,7 +51,20 @@ export interface SessionAuthConfig extends IdentityScope {
   secret?: string
 }
 
-let appScope: IdentityScope = {}
+/**
+ * Estado compartido por proceso en globalThis: los bundlers (Turbopack) pueden instanciar este módulo
+ * varias veces (una copia por bundle) y una variable de módulo haría que configureIdentity() en una
+ * copia no lo viera otra, ni el WARN "una vez". (process.env no sirve: normalizeTenant es una función.)
+ */
+interface IdentityState {
+  scope: IdentityScope
+  warned: boolean
+}
+const STATE_KEY = Symbol.for("@ai4u/platform/identity")
+function state(): IdentityState {
+  const g = globalThis as unknown as Record<symbol, IdentityState | undefined>
+  return (g[STATE_KEY] ??= { scope: {}, warned: false })
+}
 
 /**
  * Fija el alcance de identidad por defecto de ESTA app (una vez, p. ej. en instrumentation.ts o
@@ -60,10 +73,9 @@ let appScope: IdentityScope = {}
  * de su handler SSO y cortaría sesiones válidas.
  */
 export function configureIdentity(scope: IdentityScope): void {
-  appScope = { ...scope }
+  state().scope = { ...scope }
 }
 
-let warnedNoServiceId = false
 
 type HeaderCarrier = { headers: { get(name: string): string | null } }
 
@@ -98,14 +110,15 @@ export function readIdentity(req: HeaderCarrier, cfg: SessionAuthConfig = {}): I
   if (!secret) return null
   const token = parseCookies(req.headers.get("cookie"))[cookieName]
   if (!token) return null
+  const appScope = state().scope
   const scope: IdentityScope = {
     serviceId: cfg.serviceId ?? appScope.serviceId,
     allowedTenants: cfg.allowedTenants ?? appScope.allowedTenants,
     normalizeTenant: cfg.normalizeTenant ?? appScope.normalizeTenant,
     acceptLegacy: cfg.acceptLegacy ?? appScope.acceptLegacy,
   }
-  if (scope.serviceId === undefined && !warnedNoServiceId) {
-    warnedNoServiceId = true
+  if (scope.serviceId === undefined && !state().warned) {
+    state().warned = true
     getLogger("platform/auth").warn(
       "readIdentity sin serviceId configurado: una sesión firmada para otra app con el mismo secreto sería aceptada. " +
         "Pasa { serviceId } a readIdentity/sessionAuth o llama configureIdentity({ serviceId }) (platform 0.8.0).",

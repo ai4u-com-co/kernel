@@ -28,7 +28,11 @@ const mc_sso_1 = require("@ai4u/mc-sso");
 const errors_1 = require("../errors");
 const logger_1 = require("../logger");
 const security_1 = require("../security");
-let appScope = {};
+const STATE_KEY = Symbol.for("@ai4u/platform/identity");
+function state() {
+    const g = globalThis;
+    return (g[STATE_KEY] ?? (g[STATE_KEY] = { scope: {}, warned: false }));
+}
 /**
  * Fija el alcance de identidad por defecto de ESTA app (una vez, p. ej. en instrumentation.ts o
  * en un módulo de config). Las opciones pasadas a `readIdentity`/`withApiHandler({sessionAuth})`
@@ -36,9 +40,8 @@ let appScope = {};
  * de su handler SSO y cortaría sesiones válidas.
  */
 function configureIdentity(scope) {
-    appScope = { ...scope };
+    state().scope = { ...scope };
 }
-let warnedNoServiceId = false;
 /**
  * Parsea el header Cookie. Nunca lanza: una cookie con percent-encoding inválido
  * (p.ej. `%E0%A4%A`, que hace lanzar URIError a decodeURIComponent) se IGNORA y se
@@ -74,14 +77,15 @@ function readIdentity(req, cfg = {}) {
     const token = parseCookies(req.headers.get("cookie"))[cookieName];
     if (!token)
         return null;
+    const appScope = state().scope;
     const scope = {
         serviceId: cfg.serviceId ?? appScope.serviceId,
         allowedTenants: cfg.allowedTenants ?? appScope.allowedTenants,
         normalizeTenant: cfg.normalizeTenant ?? appScope.normalizeTenant,
         acceptLegacy: cfg.acceptLegacy ?? appScope.acceptLegacy,
     };
-    if (scope.serviceId === undefined && !warnedNoServiceId) {
-        warnedNoServiceId = true;
+    if (scope.serviceId === undefined && !state().warned) {
+        state().warned = true;
         (0, logger_1.getLogger)("platform/auth").warn("readIdentity sin serviceId configurado: una sesión firmada para otra app con el mismo secreto sería aceptada. " +
             "Pasa { serviceId } a readIdentity/sessionAuth o llama configureIdentity({ serviceId }) (platform 0.8.0).");
     }
