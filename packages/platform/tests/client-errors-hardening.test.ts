@@ -93,24 +93,45 @@ describe("P5 Map del rate limit con tope", () => {
   }, 30_000)
 })
 
-describe("P5 validación de service y path", () => {
-  it.each([
-    ["service con salto de línea", { service: "evil\nservice" }],
-    ["service con espacios", { service: "mi app" }],
-    ["service muy largo", { service: "a".repeat(81) }],
-    ["path sin slash inicial", { path: "ventas" }],
-    ["path con caracteres de markup", { path: "/<script>" }],
-    ["path con espacios", { path: "/a b" }],
-  ])("%s => 400 y no se registra", async (_n, patch) => {
+describe("P5/A2/M2 service y path inválidos se neutralizan, el reporte NO se pierde", () => {
+  async function logged(patch: Record<string, unknown>) {
     const { error } = spies()
-    expect((await createClientErrorHandler()(req({ ...good, ...patch }))).status).toBe(400)
-    expect(error).not.toHaveBeenCalled()
+    const res = await createClientErrorHandler()(req({ ...good, ...patch }))
+    return { status: res.status, fields: error.mock.calls[0]?.[0] as Record<string, unknown> | undefined }
+  }
+
+  it.each([
+    ["service con salto de línea", "evil\nservice"],
+    ["service con espacios", "Mi App"],
+    ["service con @ y /", "@ai4u/x"],
+    ["service muy largo", "a".repeat(81)],
+  ])("%s => 204, se registra con service 'unknown-client'", async (_n, service) => {
+    const { status, fields } = await logged({ service })
+    expect(status).toBe(204)
+    expect(fields?.clientService).toBe("unknown-client")
   })
 
-  it("service y path normales pasan", async () => {
-    const { error } = spies()
-    const h = createClientErrorHandler()
-    expect((await h(req({ ...good, service: "mi-app.v2_x", path: "/ventas/2026-10/%C3%B1?x=1#h" }))).status).toBe(204)
-    expect(error).toHaveBeenCalledTimes(1)
+  it.each(["orderloader-flexoimpresos", "lamagdalena-web", "multihealth-chat", "mi-app.v2_x"])(
+    "service legítimo %s se conserva",
+    async (service) => {
+      expect((await logged({ service })).fields?.clientService).toBe(service)
+    },
+  )
+
+  it.each([
+    ["/a|b", "/a|b"],
+    ["/x[1]", "/x[1]"],
+    ["/a^b", "/a^b"],
+    ["/ventas/2026-10/%C3%B1?x=1#h", "/ventas/2026-10/%C3%B1"],
+  ])("path del navegador %s se registra tal cual (sin 400)", async (path, expected) => {
+    const { status, fields } = await logged({ path })
+    expect(status).toBe(204)
+    expect(fields?.path).toBe(expected)
+  })
+
+  it("path sin slash inicial => /invalid; caracteres de markup/espacios/control => neutralizados", async () => {
+    expect((await logged({ path: "ventas" })).fields?.path).toBe("/invalid")
+    expect((await logged({ path: "/<script>" })).fields?.path).toBe("/_script_")
+    expect((await logged({ path: "/a b" })).fields?.path).toBe("/a_b")
   })
 })

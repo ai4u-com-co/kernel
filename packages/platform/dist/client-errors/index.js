@@ -30,8 +30,9 @@ const KINDS = ["error", "unhandledrejection", "manual"];
 const MAX_HITS = 5000;
 /** `service`: id de app corto (sin espacios ni saltos de línea). */
 const SERVICE_RE = /^[A-Za-z0-9._-]{1,80}$/;
-/** `path`: solo pathname ya codificado (como `location.pathname`), empieza con "/". */
-const PATH_RE = /^\/[A-Za-z0-9._~%!$&'()*+,;=:@/-]{0,199}$/;
+/** Caracteres de un pathname que el navegador produce tal cual (incluye `|`, `[`, `]`, `^`, `{`, `}`). */
+const PATH_UNSAFE_RE = /[^A-Za-z0-9._~%!$&'()*+,;=:@/|[\]^{}-]/g;
+const UNKNOWN_SERVICE = "unknown-client";
 const SENSITIVE_KEY = /pass(word)?|secret|token|api[-_]?key|authorization|cookie|credential/i;
 /** Quita caracteres de control (conserva \n y \t) y trunca. */
 function clean(v, max) {
@@ -52,16 +53,14 @@ function validate(raw) {
         return null;
     if (typeof o.path !== "string")
         return null;
-    if (typeof o.service === "string" && !SERVICE_RE.test(o.service))
-        return null;
     if (!KINDS.includes(o.kind))
         return null;
     if (o.extra !== undefined && (typeof o.extra !== "object" || o.extra === null || Array.isArray(o.extra)))
         return null;
     // Solo pathname: descarta querystring/hash aunque el cliente los mande.
-    const path = clean(o.path.split(/[?#]/)[0], 200);
-    if (!PATH_RE.test(path))
-        return null;
+    // Un path raro NO descarta el reporte: se neutralizan los caracteres peligrosos (o "/invalid").
+    const rawPath = clean(o.path.split(/[?#]/)[0], 200);
+    const path = rawPath.startsWith("/") ? rawPath.replace(PATH_UNSAFE_RE, "_") : "/invalid";
     const out = {
         message: clean(o.message, MAX_MESSAGE),
         kind: o.kind,
@@ -71,8 +70,10 @@ function validate(raw) {
         out.stack = clean(o.stack, MAX_STACK);
     if (typeof o.name === "string")
         out.name = clean(o.name, 100);
-    if (typeof o.service === "string")
-        out.service = clean(o.service, 80);
+    if (typeof o.service === "string") {
+        // Un service con formato raro tampoco descarta el reporte: se reemplaza por un valor por defecto.
+        out.service = SERVICE_RE.test(o.service) ? o.service : UNKNOWN_SERVICE;
+    }
     if (o.extra) {
         const extra = {};
         for (const [k, v] of Object.entries(o.extra).slice(0, 10)) {
