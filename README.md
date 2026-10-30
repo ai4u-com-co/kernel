@@ -5,23 +5,15 @@ Etapa 2 de la migración a monorepo del ecosistema superAI: los paquetes compart
 un repo con historia preservada, para que cambiar el vocabulario compartido entre ellos
 sea un commit, no una coordinación manual entre 4 repos.
 
-**Estado (jul-26-2026): los 5 paquetes migrados** (los 4 originales + `contracts`,
-creado el mismo día como quinto paquete compartido y plegado acá para consistencia).
-`config` con el ciclo end-to-end probado en producción real (tag → espejo → bump-bot →
-PR → merge → deploy). `platform` (27 consumidores), `mc-sso` (21) y
-`design-system`/`sistemaDiseno` (25) con historia importada, build/type-check en verde
-— **sin publicar tags nuevos todavía**, a propósito (ver nota abajo). `contracts` ya
-tenía su tag original `v0.1.0` (de antes de existir `kernel`) y un único consumidor real
-(`sap-b1-chat`) — bajo riesgo si algún día se fuerza un ciclo de prueba ahí, pero no
-hace falta: nada cambió de su contenido.
+**Estado (30-oct-2026)**: los 5 paquetes viven acá y se publican desde acá. Versiones: `config` 0.2.0,
+`contracts` 0.7.0, `mc-sso` 1.3.0, `platform` 0.7.0 y `design-system` 1.4.0. Consumidores reales
+(leídos de los `package.json`): `platform` 36, `mc-sso` 28, `config` 35, `design-system` 34, `contracts` 4.
+El ciclo completo (tag → espejo → `bump-bot` → PR → merge → deploy) ya corrió en producción para
+`config`, `contracts`, `mc-sso` y `platform` (hasta 0.6.2). `design-system` **no** se ha publicado
+todavía desde `kernel` (su espejo `sistemaDiseno#v1.4.0` es anterior a este `dist/`).
 
-Confirmado también: el pin interno `platform → mc-sso` (`github:ai4u-com-co/mc-sso#v1.1.0`,
-corregido en julio tras el bug del pin flotando) llegó correcto en la copia importada.
-
-**`design-system` es distinto a los otros 3 en un punto importante** (ver sección
-"Fidelidad del build" abajo): su `dist/` NO es byte a byte idéntico al publicado, y no
-es un bug — es no-determinismo conocido del minificador de Vite/Rollup entre entornos
-de build distintos, no una diferencia de código fuente.
+El pin interno `platform → mc-sso` debe mantenerse en la última versión estable de `mc-sso`
+(hoy `#v1.3.0`); si subes `mc-sso`, súbelo en el mismo PR.
 
 ## Por qué existe (y qué NO cambia para los 27+ consumidores)
 
@@ -43,22 +35,13 @@ packages/
   contracts/      — @ai4u/contracts, historia importada de ai4u-com-co/contracts vía git subtree
 ```
 
-**Nota de nombres — no tocado a propósito**: el script de type-check de `design-system`
-se llama `typecheck` (sin guion, documentado así en su propio `CLAUDE.md` — convención
-intencional, no un descuido), distinto al resto (`type-check`). `npm run type-check
---workspaces --if-present` desde la raíz lo salta en silencio (`--if-present` no
-distingue "no existe" de "existe con otro nombre"). Verificarlo hoy requiere el comando
-explícito `npm run typecheck --workspace=packages/design-system` — corrido a mano,
-en verde.
+**Scripts de verificación**: `design-system` define `typecheck` y `type-check` (alias, mismo
+comando) para que `npm run type-check --workspaces --if-present` desde la raíz **sí** lo corra.
 
-**Deuda real preexistente encontrada (no causada por esta migración, no corregida)**:
-`design-system` tiene **6+ archivos de test reales** (`src/**/__tests__/*.test.tsx`:
-Button, Navigation, Accessibility, SEOHead, Logo, ServiceCard) pero **ningún script
-`test` en `package.json`** — nunca corrieron en CI. No es un `vitest run` trivial de
-agregar: usa `@storybook/addon-vitest` en **modo navegador vía Playwright**
-(`@vitest/browser-playwright`), que necesita navegadores instalados y una config de
-Storybook — wirearlo de verdad es trabajo aparte, no algo para hacer de paso en un
-import de historia.
+**Deuda real preexistente (no corregida)**: `design-system` tiene 7 archivos de test
+(`src/**/__tests__/*.test.tsx`) pero **ningún script `test`**: nunca corrieron en CI. Además
+`Button.test.tsx` usa `jest.mock`/`jest.fn` aunque el repo usa vitest 4 + Playwright
+(`@vitest/browser-playwright`). Cablearlos es trabajo aparte.
 
 ## Espejo — estado real
 
@@ -66,39 +49,29 @@ import de historia.
 `packages/config/dist/` **byte a byte idéntico** al `dist/` actualmente publicado en
 `ai4u-com-co/config` (verificado con `diff -r`, no solo "el build no truena").
 
+**Publicar**: usa `scripts/release.sh <paquete> <versión>` (ver `CLAUDE.md`). Si un tag ya existe pero el
+espejo no lo recibió, se re-publica sin re-crearlo: `gh workflow run mirror.yml -f tag=<paquete>-vX.Y.Z`.
+**Nunca** pongas `[skip ci]` en un commit que vayas a taggear: GitHub no dispara workflows de `push`
+(tags incluidos) para ese commit y el espejo no se publica (caso `platform-v0.7.0`, 30-oct-2026).
+
 **La automatización (`.github/workflows/mirror.yml`) reusa la GitHub App de
 `bump-bot`** (mismo mecanismo ya validado en `ai4u-com-co/bump-bot#bump.yml`): mintea
 un token de instalación acotado solo al repo espejo que corresponde, vía
 `actions/create-github-app-token@v3`.
 
-### Credencial [PASO HUMANO]
+### Credencial
 
-Los secrets `BUMP_BOT_APP_CLIENT_ID` / `BUMP_BOT_APP_PRIVATE_KEY` viven hoy solo en el
-repo `bump-bot` — GitHub nunca expone el valor de un secreto ya configurado (no hay
-API para leerlo, ni con autorización), así que hace falta que alguien con acceso a la
-clave privada original la agregue también acá:
+Los secrets `BUMP_BOT_APP_CLIENT_ID` / `BUMP_BOT_APP_PRIVATE_KEY` están cargados en este repo y el
+espejo los usa desde sep-2026. Sin ellos el workflow falla explícito en el step "Verificar credencial".
+Para rotarlos: `gh secret set BUMP_BOT_APP_CLIENT_ID --repo ai4u-com-co/kernel` (idem la clave privada).
 
-```bash
-gh secret set BUMP_BOT_APP_CLIENT_ID --repo ai4u-com-co/kernel --body "<mismo valor que en bump-bot>"
-gh secret set BUMP_BOT_APP_PRIVATE_KEY --repo ai4u-com-co/kernel --body "$(cat ruta/a/la/clave-privada.pem)"
-```
+## Carga de consumidores y bumps
 
-O vía UI: `https://github.com/ai4u-com-co/kernel/settings/secrets/actions/new`.
-
-Sin esos secrets, el workflow falla explícito (no en silencio) en el step
-"Verificar credencial".
-
-## Nota sobre `platform`, `mc-sso` y `design-system`: por qué no se taggearon todavía
-
-A diferencia de `config` (2 consumidores, bump trivial de bajo costo para probar el
-mecanismo completo), los otros 3 tienen mucho más blast radius (27, 21 y 25
-consumidores). El mecanismo de espejo ya está probado end-to-end con `config` —
-repetir esa prueba acá forzando un bump artificial dispararía `bump-bot` sobre
-decenas de consumidores reales a la vez, solo para "probar algo" que ya se probó.
-No se justifica.
-
-El primer tag real de cada uno desde `kernel` se hace cuando haya un cambio real que
-publicar (un fix, una feature) — no antes.
+`platform`, `mc-sso` y `design-system` tienen decenas de consumidores: cada tag nuevo provoca un PR
+de `bump-bot` por consumidor (CI + preview). Por eso `bump-bot` espera 12 h de estabilidad antes de
+bumpear (`tag-is-stable.sh`); publicar dos versiones seguidas dentro de esa ventana colapsa en un
+solo bump a la última. La lista de consumidores de `bump-bot` (`consumers.json`) debe coincidir con
+los `package.json` reales: si un repo nuevo no aparece ahí, no recibe bumps.
 
 ## Fidelidad del build — qué se verificó en cada paquete
 
@@ -107,7 +80,7 @@ publicar (un fix, una feature) — no antes.
 | `config` | `tsc` | Byte a byte idéntico |
 | `platform` | `tsc` | Byte a byte idéntico |
 | `mc-sso` | `tsc` | Byte a byte idéntico |
-| `design-system` | Vite/Rollup | **No** idéntico — confirmado no-determinismo del minificador (dos builds seguidos en el mismo lugar SÍ son idénticos entre sí; la diferencia es contra el publicado en otro entorno de build). Nombres de variables minificadas distintos, mismo código fuente (mismo commit vía subtree), typecheck limpio. |
+| `design-system` | Vite/Rollup | **No** idéntico al tag `v1.4.0` del espejo, con `src/` idéntico. Auditoría 30-oct-2026: la causa NO es el minificador; `vite.config.ts` solo externaliza `@mui/material` y `@mui/icons-material` por nombre exacto, así que los subpaths (`@mui/material/styles`, `@mui/icons-material/<X>`) se **bundlean** y el `dist/` depende de la versión de MUI instalada al compilar (el tag lleva `@mui/styled-engine` 9.0.0 sin `theme.motion`; el `dist/` actual, 9.1.x). Dos builds en el mismo entorno sí son idénticos. Arreglo planeado: externalizar con regex (`/^@mui\//`) y publicar versión nueva. |
 | `contracts` | `tsc` | Byte a byte idéntico |
 
 Los 5: historia completa preservada vía `git subtree` (`config`/`platform`/`contracts`

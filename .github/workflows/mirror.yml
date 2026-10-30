@@ -17,23 +17,44 @@ name: Espejo de paquete
 # API), así que hace falta que alguien con acceso a la clave privada original la agregue
 # también acá. Sin esos secrets, el step de abajo falla explícito, no en silencio.
 
+# Disparo manual (workflow_dispatch): re-publica un tag que YA existe sin tener que borrarlo ni
+# re-crearlo. Caso real (30-oct-2026): `platform-v0.7.0` se taggeó sobre un commit con `[skip ci]`
+# en el mensaje y GitHub no dispara workflows de `push` (tags incluidos) para ese commit, así que
+# el espejo nunca se publicó. Uso: gh workflow run mirror.yml -f tag=platform-v0.7.0
+# (workflow_dispatch NO respeta `[skip ci]`). Es idempotente: no sobrescribe un tag del espejo
+# que ya apunte a otro commit.
+
 on:
   push:
     tags:
       - '*-v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag existente en kernel a publicar, formato <paquete>-vX.Y.Z (ej. platform-v0.7.0)'
+        required: true
+        type: string
+
+concurrency:
+  # Nunca dos publicaciones del mismo tag a la vez (push de tag + disparo manual).
+  group: mirror-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   mirror:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # En push de tag, el ref ya es el tag; en disparo manual hay que pedirlo explícito.
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
 
       - name: Resolver paquete y versión del tag
         id: parse
         env:
-          REF_NAME: ${{ github.ref_name }}
+          REF_NAME: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           if [[ ! "$REF_NAME" =~ ^([a-z0-9-]+)-(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then

@@ -64,7 +64,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai4u/mc-sso": "github:ai4u-com-co/mc-sso#v1.2.0",
+    "@ai4u/mc-sso": "github:ai4u-com-co/mc-sso#v1.3.0",
     "@vercel/oidc": "^3.8.9"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 # AI4U Design System — Developer Guide
 
-Librería de componentes/tokens consumida por todo el ecosistema superAI vía `github:donchelo/sistemaDiseno`. Vite (library mode) + MUI + Emotion.
+Librería de componentes/tokens consumida por todo el ecosistema superAI vía `github:ai4u-com-co/sistemaDiseno`. Vite (library mode) + MUI + Emotion.
 
 > Componentes, tokens y uso: ver `README.md` y Storybook.
 
