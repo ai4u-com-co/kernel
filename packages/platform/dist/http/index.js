@@ -83,7 +83,7 @@ function withApiHandler(handler, options = {}) {
                         if (identity)
                             (0, logger_1.setContextFields)({ tenant: identity.tenantId, userId: identity.userId });
                         if (options.requireModule)
-                            (0, auth_1.requireModule)(identity, options.requireModule);
+                            (0, auth_1.requireModule)(identity, options.requireModule, { strict: options.strictModules });
                         if (options.requireRole)
                             (0, auth_1.requireRole)(identity, options.requireRole);
                     }
