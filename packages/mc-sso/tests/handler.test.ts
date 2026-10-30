@@ -244,7 +244,11 @@ describe.skipIf(!existsSync(PLATFORM_AUTH))("interop con @ai4u/platform readIden
       roles: ["admin"],
       allowedModules: ["ventas", "finanzas"],
       displayName: "Ana Pérez",
+      serviceId: SERVICE, // platform >= 0.8.0 expone el serviceId de la sesión
     })
+    // Con el serviceId de ESTA app la lee; con el de otra app (mismo secreto) no.
+    expect(readIdentity(req, { secret: SECRET, serviceId: SERVICE })).not.toBeNull()
+    expect(readIdentity(req, { secret: SECRET, serviceId: SERVICE + "-otra" })).toBeNull()
     expect(readIdentity(req, { secret: SECRET + "x" })).toBeNull()
   })
 })
