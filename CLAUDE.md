@@ -47,12 +47,15 @@ compartidos, no es una app ni se despliega. Repo público: no poner secretos ni 
    `gh workflow run mirror.yml -f tag=<paquete>-vX.Y.Z`. El workflow `verify-mirror.yml` (semanal)
    abre un Issue si algún último tag de kernel no está en su espejo.
 3. `.github/workflows/mirror.yml` compila el paquete y hace `rsync --delete` de su contenido al repo
-   espejo (commit + tag `vX.Y.Z`). Tiene reintentos ante 403/5xx transitorios
+   espejo (commit + tag `vX.Y.Z`), **excluyendo `.github/workflows/`** (la GitHub App no tiene el permiso
+   `workflows`; el publish no crea, modifica ni borra workflows del espejo). Tiene reintentos ante 403/5xx transitorios
    (`.github/scripts/mirror-push-retry.sh`). No sobrescribe un tag ya existente en otro commit.
 4. Los consumidores pinean `github:ai4u-com-co/<espejo>#vX.Y.Z` (actualización automatizada por `bump-bot`).
-- **No edites los repos espejo a mano**: el siguiente publish los sobrescribe con lo de aquí. Las
-  plantillas de Issue/PR y el `ci.yml` de cada espejo viven en `packages/<paquete>/.github/` justamente
-  por eso; cámbialos acá.
+- **No edites a mano el contenido de los repos espejo** (src/, dist/, plantillas): el siguiente publish
+  lo sobrescribe con lo de aquí. Las plantillas de Issue/PR (`.github/ISSUE_TEMPLATE/`,
+  `PULL_REQUEST_TEMPLATE.md`) SÍ viajan al espejo desde `packages/<paquete>/.github/`; cámbialas acá.
+  Los **workflows del espejo (`.github/workflows/ci.yml`) NO los toca el publish**: se editan en el
+  propio espejo. Los `packages/*/.github/workflows/` de kernel son copias de referencia que el publish ignora.
 - Secrets del workflow: `BUMP_BOT_APP_CLIENT_ID` y `BUMP_BOT_APP_PRIVATE_KEY` (GitHub App de
   bump-bot). Según el README deben estar cargados en este repo (paso humano); no se ven desde aquí.
 - Los espejos permanecen para siempre (decisión del README): los consumidores no migran a `kernel`.

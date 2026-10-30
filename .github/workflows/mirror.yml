@@ -127,7 +127,14 @@ jobs:
           WORK_DIR="$(mktemp -d)"
           echo "work_dir=$WORK_DIR" >> "$GITHUB_OUTPUT"
           git clone --depth 1 "https://x-access-token:${MIRROR_TOKEN}@github.com/${MIRROR_REPO}.git" "$WORK_DIR"
-          rsync -a --delete --exclude=.git "packages/${PACKAGE}/" "$WORK_DIR/"
+          # NO se toca nada bajo .github/workflows/ del espejo (30-oct-2026): la GitHub App
+          # ai4u-bump-bot no tiene el permiso `workflows` (y no se le quiere dar: le permitiria
+          # modificar workflows de toda la org) y el push se rechazaba con
+          #   ! [remote rejected] main -> main (refusing to allow a GitHub App to create or
+          #   update workflow `.github/workflows/ci.yml` without `workflows` permission)
+          # La exclusion anclada (/.github/workflows/) protege tambien contra --delete en destino.
+          # Las plantillas Issue/PR (.github/ISSUE_TEMPLATE/, PULL_REQUEST_TEMPLATE.md) siguen viajando.
+          rsync -a --delete --exclude=.git --exclude='/.github/workflows/' "packages/${PACKAGE}/" "$WORK_DIR/"
           cd "$WORK_DIR"
           # git config --local: el clone de arriba es un .git DISTINTO al del checkout de este
           # job (vive en $WORK_DIR, no en el working directory por defecto) — configurar el

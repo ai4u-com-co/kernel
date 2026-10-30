@@ -55,6 +55,12 @@ espejo no lo recibió, se re-publica sin re-crearlo: `gh workflow run mirror.yml
 **Nunca** pongas `[skip ci]` en un commit que vayas a taggear: GitHub no dispara workflows de `push`
 (tags incluidos) para ese commit y el espejo no se publica (caso `platform-v0.7.0`, 30-oct-2026).
 
+**El publish no toca los workflows del espejo**: `mirror.yml` excluye `.github/workflows/` del rsync
+(la GitHub App no tiene el permiso `workflows`, y no se le da a propósito). Los `ci.yml` de cada espejo se
+editan en el espejo; los de `packages/*/.github/workflows/` en este repo son copias de referencia que el
+publish ignora. Las plantillas Issue/PR (`packages/*/.github/ISSUE_TEMPLATE/`, `PULL_REQUEST_TEMPLATE.md`)
+sí se sincronizan.
+
 **La automatización (`.github/workflows/mirror.yml`) reusa la GitHub App de
 `bump-bot`** (mismo mecanismo ya validado en `ai4u-com-co/bump-bot#bump.yml`): mintea
 un token de instalación acotado solo al repo espejo que corresponde, vía
