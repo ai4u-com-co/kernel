@@ -11,7 +11,7 @@ compartidos, no es una app ni se despliega. Repo público: no poner secretos ni 
 | Carpeta | Paquete | Repo espejo (`mirror.json`) |
 |---|---|---|
 | `config` | `@ai4u/config` 0.2.0 | `ai4u-com-co/config` |
-| `platform` | `@ai4u/platform` 0.7.0 | `ai4u-com-co/platform` |
+| `platform` | `@ai4u/platform` 0.9.0 | `ai4u-com-co/platform` |
 | `mc-sso` | `@ai4u/mc-sso` 1.3.0 | `ai4u-com-co/mc-sso` |
 | `design-system` | `@ai4u/design-system` 1.4.0 | `ai4u-com-co/sistemaDiseno` |
 | `contracts` | `@ai4u/contracts` 0.7.0 | `ai4u-com-co/contracts` |

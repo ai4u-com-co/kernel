@@ -13,7 +13,7 @@ del ecosistema; no es una app, no se despliega: se **publica como tag**.
 
 ## Stack
 - TypeScript (`tsc`), tests con `vitest`. CI usa Node 22. Dependencias: `@ai4u/mc-sso` (pin por tag
-  de GitHub) y `@vercel/oidc`. Versión actual: ver `package.json` (0.8.0).
+  de GitHub) y `@vercel/oidc`. Versión actual: ver `package.json` (0.9.0).
 
 ## Comandos (de `package.json`)
 - `npm ci` — instalar

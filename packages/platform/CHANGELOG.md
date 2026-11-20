@@ -1,5 +1,22 @@
 # Changelog — @ai4u/platform
 
+## 0.9.0 — 2026-11-20
+
+Aditivo: sin la opción nueva, el comportamiento es idéntico al de 0.8.0.
+
+### Añadido
+- `withApiHandler(handler, { quietSuccess })` para rutas de alto volumen (polling de máquinas y crons).
+  Con `quietSuccess: true` (o `{ slowMs }`) NO se registra la línea INFO de una respuesta exitosa
+  (status < 400, tanto si el handler retorna una `Response` como un objeto → 200) salvo que tarde
+  `≥ slowMs` (default 2000 ms; un valor no finito o negativo cae al default). Se siguen registrando
+  siempre: los 4xx retornados (WARN), los 5xx retornados (ERROR), toda excepción (WARN si es 4xx
+  operacional, ERROR si no), y la auth de servicio inválida (WARN 401). La respuesta no cambia
+  (cuerpo, status y `x-request-id` iguales).
+  Motivo: en `mission-control` el 94 % de las filas de `platform_logs` en 7 días (54.581 de 58.330)
+  eran INFO de éxito de tráfico de máquinas (`POST tickets link-pr`, `GET pipeline next`,
+  `GET pipeline config`, `POST ai-jobs claim`, crons), que ahogaban el tráfico humano.
+  No cambia el logger, el transporte ni el flush: la opción solo decide si se llama a `log.info`.
+
 ## 0.8.0 — 2026-10-30
 
 Seguridad y robustez (auditoría de 0.7.0). Compatible salvo lo listado en "Cambios visibles".

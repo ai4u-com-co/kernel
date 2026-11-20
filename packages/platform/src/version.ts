@@ -4,4 +4,4 @@
  * package.json; tests/platform-version.test.ts falla si se desincronizan (un import de
  * package.json no compila con `rootDir: src`).
  */
-export const PLATFORM_VERSION = "0.8.0"
+export const PLATFORM_VERSION = "0.9.0"

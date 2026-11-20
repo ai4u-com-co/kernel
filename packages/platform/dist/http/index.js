@@ -52,6 +52,16 @@ async function scheduleFlush() {
     await (0, logger_1.flushLogs)();
 }
 const auth_1 = require("../auth");
+const DEFAULT_QUIET_SLOW_MS = 2000;
+/** Umbral (ms) a partir del cual un éxito SÍ se loguea con quietSuccess; null = loguear todo (default). */
+function quietSuccessThreshold(opt) {
+    if (!opt)
+        return null;
+    if (opt === true)
+        return DEFAULT_QUIET_SLOW_MS;
+    const ms = opt.slowMs;
+    return typeof ms === "number" && Number.isFinite(ms) && ms >= 0 ? ms : DEFAULT_QUIET_SLOW_MS;
+}
 function jsonResponse(body, status, requestId) {
     return new Response(JSON.stringify(body), {
         status,
@@ -65,6 +75,9 @@ function safeIncomingRequestId(v) {
 }
 function withApiHandler(handler, options = {}) {
     const label = options.label ?? "api";
+    const quietSlowMs = quietSuccessThreshold(options.quietSuccess);
+    /** Con quietSuccess, un éxito rápido no se loguea (solo aplica a status < 400). */
+    const logSuccess = (durationMs) => quietSlowMs === null || durationMs >= quietSlowMs;
     return async (req, routeCtx) => {
         const requestId = safeIncomingRequestId(req.headers.get("x-request-id")) ?? (0, logger_1.newRequestId)();
         const log = (0, logger_1.getLogger)(label);
@@ -114,7 +127,7 @@ function withApiHandler(handler, options = {}) {
                         else if (result.status >= 400) {
                             log.warn(logPayload, label);
                         }
-                        else {
+                        else if (logSuccess(durationMs)) {
                             log.info(logPayload, label);
                         }
                         // Propaga el requestId aunque el handler haya construido su propia Response.
@@ -122,7 +135,8 @@ function withApiHandler(handler, options = {}) {
                             result.headers.set("x-request-id", requestId);
                         return result;
                     }
-                    log.info({ durationMs, status: 200 }, label);
+                    if (logSuccess(durationMs))
+                        log.info({ durationMs, status: 200 }, label);
                     return jsonResponse(result, 200, requestId);
                 }
                 catch (err) {
