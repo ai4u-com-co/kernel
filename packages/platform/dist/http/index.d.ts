@@ -39,6 +39,16 @@ export interface WithApiHandlerOptions {
     sessionAuth?: SessionAuthConfig;
     /** Config de auth de servicio. */
     serviceAuth?: ServiceAuthConfig;
+    /**
+     * Rutas de alto volumen (polling/crons): no registra las respuestas exitosas (status < 400,
+     * tanto `Response` como objeto retornado) salvo que tarden ≥ `slowMs` (default 2000 ms).
+     * Los 4xx (WARN), 5xx (ERROR), las excepciones y la auth de servicio inválida se registran
+     * siempre, igual que sin la opción. Default `false`: comportamiento idéntico a 0.8.0.
+     * Un `slowMs` no finito o negativo cae al default.
+     */
+    quietSuccess?: boolean | {
+        slowMs?: number;
+    };
 }
 type RouteHandler<R> = (req: Request, ctx: ApiContext & R) => Promise<unknown> | unknown;
 export declare function withApiHandler<R extends object = object>(handler: RouteHandler<R>, options?: WithApiHandlerOptions): (req: Request, routeCtx?: R) => Promise<Response>;

@@ -40,6 +40,10 @@ export const POST = withApiHandler(async (req, ctx) => {
   // ctx.requestId, ctx.log, ctx.identity
   return { ok: true }                       // → 200 { ok:true } con x-request-id
 }, { label: "POST cosa", requireModule: "kpis" })
+// Rutas de polling/crons (0.9.0): no registra los éxitos (< 400) salvo que tarden ≥ slowMs
+// (default 2000 ms). 4xx (WARN), 5xx (ERROR) y excepciones se registran siempre.
+export const GET = withApiHandler(handler, { label: "GET pipeline next", quietSuccess: true })
+// withApiHandler(handler, { quietSuccess: { slowMs: 5000 } })   // umbral propio
 
 // Auth: identidad + permisos uniformes
 import { readIdentity, requireModule, verifyServiceRequest, configureIdentity } from "@ai4u/platform/auth"

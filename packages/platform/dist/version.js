@@ -7,4 +7,4 @@ exports.PLATFORM_VERSION = void 0;
  * package.json; tests/platform-version.test.ts falla si se desincronizan (un import de
  * package.json no compila con `rootDir: src`).
  */
-exports.PLATFORM_VERSION = "0.8.0";
+exports.PLATFORM_VERSION = "0.9.0";

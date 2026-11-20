@@ -84,6 +84,24 @@ export interface WithApiHandlerOptions {
   sessionAuth?: SessionAuthConfig
   /** Config de auth de servicio. */
   serviceAuth?: ServiceAuthConfig
+  /**
+   * Rutas de alto volumen (polling/crons): no registra las respuestas exitosas (status < 400,
+   * tanto `Response` como objeto retornado) salvo que tarden ≥ `slowMs` (default 2000 ms).
+   * Los 4xx (WARN), 5xx (ERROR), las excepciones y la auth de servicio inválida se registran
+   * siempre, igual que sin la opción. Default `false`: comportamiento idéntico a 0.8.0.
+   * Un `slowMs` no finito o negativo cae al default.
+   */
+  quietSuccess?: boolean | { slowMs?: number }
+}
+
+const DEFAULT_QUIET_SLOW_MS = 2000
+
+/** Umbral (ms) a partir del cual un éxito SÍ se loguea con quietSuccess; null = loguear todo (default). */
+function quietSuccessThreshold(opt: WithApiHandlerOptions["quietSuccess"]): number | null {
+  if (!opt) return null
+  if (opt === true) return DEFAULT_QUIET_SLOW_MS
+  const ms = opt.slowMs
+  return typeof ms === "number" && Number.isFinite(ms) && ms >= 0 ? ms : DEFAULT_QUIET_SLOW_MS
 }
 
 type RouteHandler<R> = (req: Request, ctx: ApiContext & R) => Promise<unknown> | unknown
@@ -106,6 +124,9 @@ export function withApiHandler<R extends object = object>(
   options: WithApiHandlerOptions = {},
 ): (req: Request, routeCtx?: R) => Promise<Response> {
   const label = options.label ?? "api"
+  const quietSlowMs = quietSuccessThreshold(options.quietSuccess)
+  /** Con quietSuccess, un éxito rápido no se loguea (solo aplica a status < 400). */
+  const logSuccess = (durationMs: number): boolean => quietSlowMs === null || durationMs >= quietSlowMs
   return async (req: Request, routeCtx?: R): Promise<Response> => {
     const requestId = safeIncomingRequestId(req.headers.get("x-request-id")) ?? newRequestId()
     const log = getLogger(label)
@@ -156,14 +177,14 @@ export function withApiHandler<R extends object = object>(
               log.error(logPayload, label)
             } else if (result.status >= 400) {
               log.warn(logPayload, label)
-            } else {
+            } else if (logSuccess(durationMs)) {
               log.info(logPayload, label)
             }
             // Propaga el requestId aunque el handler haya construido su propia Response.
             if (!result.headers.get("x-request-id")) result.headers.set("x-request-id", requestId)
             return result
           }
-          log.info({ durationMs, status: 200 }, label)
+          if (logSuccess(durationMs)) log.info({ durationMs, status: 200 }, label)
           return jsonResponse(result, 200, requestId)
         } catch (err) {
           const durationMs = Date.now() - start
